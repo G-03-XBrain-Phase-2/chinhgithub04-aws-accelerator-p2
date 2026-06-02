@@ -29,7 +29,19 @@ Em đã xây dựng một tổ hợp thực hành nâng cao an toàn (sử dụn
 ---
 
 ### Thứ Ba, 02/06/2026 — Day B: Kubernetes Architecture & Local Setup
-*(Sẽ cập nhật chi tiết sau khi hoàn thành ngày học Day B)*
+> **Nhiệm vụ:** Tự học lý thuyết kiến trúc Kubernetes, các loại tài nguyên cốt lõi (Pod, Service, Probes), cấu hình bảo mật mạng (ConfigMap, Secret, NetworkPolicy) và thiết lập môi trường chạy thử nghiệm cục bộ.
+
+#### 1. Lý thuyết thu hoạch được (Core Theoretical Takeaways)
+- **Kiến trúc hệ thống**: Nắm rõ vai trò của Control Plane trong việc ra quyết định toàn cục (lập lịch, điều khiển trạng thái) và Worker Node trong việc thực thi container. Hiểu sâu cơ chế tương tác thông qua watch event của API Server và cách lưu trữ trạng thái tại etcd.
+- **Tài nguyên Pod & Service**: Hiểu rõ Pod là đơn vị chia sẻ chung network/storage namespace giữa các container. Nắm vững cách phân phối lưu lượng của Service thông qua Selector, phân biệt rõ các loại Service (ClusterIP để giao tiếp nội bộ, NodePort để mở cổng trên node và LoadBalancer để tích hợp đám mây).
+- **Probes**: Phân biệt vai trò của ba loại Probe trong giám sát sức khỏe container: Startup Probe (chỉ chạy khi khởi động), Liveness Probe (giữ container sống, tự khởi động lại khi treo) và Readiness Probe (ngăn traffic lỗi đi vào container chưa sẵn sàng).
+- **ConfigMap/Secret & NetworkPolicy**: Nhận thức được Base64 của Secret chỉ là mã hóa định dạng (encoding), cần áp dụng mã hóa dữ liệu lưu trữ (Encryption at Rest) và phân quyền RBAC chặt chẽ. Hiểu nguyên lý hoạt động của NetworkPolicy giúp thiết lập tường lửa cô lập mạng giữa các Pod dựa trên nhãn nhắm tới.
+
+#### 2. Kết quả thực hành (Practical Checkpoint Evidence)
+Em đã hoàn thành việc thiết lập và kiểm tra môi trường cục bộ trên hệ điều hành Windows:
+- [x] Cài đặt Docker Desktop, minikube và kubectl thông qua Windows Package Manager (`winget`).
+- [x] Khởi động thành công cụm Kubernetes cục bộ: `minikube start --driver=docker`.
+- [x] Thực thi triển khai thử nghiệm một nginx Pod, expose cổng thông qua dịch vụ NodePort và truy cập thành công qua URL được cấp bởi minikube, sau đó làm sạch tài nguyên thử nghiệm.
 
 ---
 
