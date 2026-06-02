@@ -14,7 +14,7 @@ Bảng dưới đây tổng hợp lộ trình học tập và trạng thái hoà
 | Tuần | Ngày / Chuyên đề | Trạng thái | Nội dung trọng tâm / Sản phẩm | Liên kết |
 | :--- | :--- | :---: | :--- | :---: |
 | **W8** | **Day A: Terraform Basics** | ![Hoàn thành](https://img.shields.io/badge/Hoàn_thành-brightgreen) | Tìm hiểu IaC, cú pháp HCL, luồng CLI (Init/Plan/Apply/Destroy), thực hành phát hiện Drift và Replace tài nguyên | [Xem chi tiết](cloud/w8/day-a/README.md) |
-| | **Day B: Kubernetes Basics** | ![Lên kế hoạch](https://img.shields.io/badge/Lên_kế_hoạch-grey) | Tìm hiểu mô hình Container Orchestration, Pods, Services, Probes và thiết lập minikube cục bộ | [Xem chi tiết](cloud/w8/day-b/) |
+| | **Day B: Kubernetes Basics** | ![Hoàn thành](https://img.shields.io/badge/Hoàn_thành-brightgreen) | Tìm hiểu mô hình Container Orchestration, Pods, Services, Probes và thiết lập minikube cục bộ | [Xem chi tiết](cloud/w8/day-b/) |
 | | **Day C: Terraform Advanced** | ![Lên kế hoạch](https://img.shields.io/badge/Lên_kế_hoạch-grey) | Quản lý State (S3/DynamoDB), Modules, tham gia Live Q&A và làm Bài kiểm tra số 1 | [Xem chi tiết](cloud/w8/day-c/) |
 | | **Lab: Mini K8s Platform** | ![Lên kế hoạch](https://img.shields.io/badge/Lên_kế_hoạch-grey) | Thực hành triển khai hệ thống đa container trên minikube và làm Bài kiểm tra số 2 | [Xem chi tiết](cloud/w8/lab/) |
 | | **Reflection W8** | ![Đang thực hiện](https://img.shields.io/badge/Đang_thực_hiện-orange) | Ghi chép nhật ký phản hồi và bài học rút ra sau mỗi ngày | [Xem chi tiết](cloud/w8/reflection.md) |
