@@ -48,3 +48,7 @@ Thumbs.db
 # Specific practice lab outputs
 **/practice/project_metadata.json
 
+# Kubernetes manifests secrets containing raw credentials
+**/manifests/02_secret.yaml
+
+
