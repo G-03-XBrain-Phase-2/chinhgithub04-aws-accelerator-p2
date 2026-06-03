@@ -1,0 +1,15 @@
+# Khu vực AWS triển khai tài nguyên
+aws_region = "us-east-1"
+
+# Tên dự án phát triển
+project_name = "XBrain-Phase-2"
+
+# Tên duy nhất toàn cầu của S3 Bucket (hãy thay thế bằng tên của bạn để tránh trùng lặp trên AWS)
+bucket_name = "xbrain-080-dev-static-website"
+
+# Các thẻ tag chung cho môi trường
+tags = {
+  Environment = "dev"
+  Owner       = "XB-DN26-080"
+  Project     = "XBrain-Phase-2"
+}
