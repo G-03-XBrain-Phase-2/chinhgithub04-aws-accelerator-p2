@@ -15,9 +15,9 @@ Bảng dưới đây tổng hợp lộ trình học tập và trạng thái hoà
 | :--- | :--- | :---: | :--- | :---: |
 | **W8** | **Day A: Terraform Basics** | ![Hoàn thành](https://img.shields.io/badge/Hoàn_thành-brightgreen) | Tìm hiểu IaC, cú pháp HCL, luồng CLI (Init/Plan/Apply/Destroy), thực hành phát hiện Drift và Replace tài nguyên | [Xem chi tiết](cloud/w8/day-a/README.md) |
 | | **Day B: Kubernetes Basics** | ![Hoàn thành](https://img.shields.io/badge/Hoàn_thành-brightgreen) | Tìm hiểu mô hình Container Orchestration, Pods, Services, Probes và thiết lập minikube cục bộ | [Xem chi tiết](cloud/w8/day-b/) |
-| | **Day C: Terraform Advanced** | ![Lên kế hoạch](https://img.shields.io/badge/Lên_kế_hoạch-grey) | Quản lý State (S3/DynamoDB), Modules, tham gia Live Q&A và làm Bài kiểm tra số 1 | [Xem chi tiết](cloud/w8/day-c/) |
-| | **Lab: Mini K8s Platform** | ![Lên kế hoạch](https://img.shields.io/badge/Lên_kế_hoạch-grey) | Thực hành triển khai hệ thống đa container trên minikube và làm Bài kiểm tra số 2 | [Xem chi tiết](cloud/w8/lab/) |
-| | **Reflection W8** | ![Đang thực hiện](https://img.shields.io/badge/Đang_thực_hiện-orange) | Ghi chép nhật ký phản hồi và bài học rút ra sau mỗi ngày | [Xem chi tiết](cloud/w8/reflection.md) |
+| | **Day C: Terraform Advanced** | ![Hoàn thành](https://img.shields.io/badge/Hoàn_thành-brightgreen) | Quản lý State (S3/DynamoDB), Modules, tham gia Live Q&A và làm Bài kiểm tra số 1 | [Xem chi tiết](cloud/w8/day-c/) |
+| | **Lab: Mini K8s Platform** | ![Hoàn thành](https://img.shields.io/badge/Hoàn_thành-brightgreen) | Thực hành triển khai cụm Kubernetes Kind trên EC2 với định tuyến ALB động 1-click | [Xem chi tiết](cloud/w8/lab/) |
+| | **Reflection W8** | ![Hoàn thành](https://img.shields.io/badge/Hoàn_thành-brightgreen) | Ghi chép nhật ký phản hồi và bài học rút ra sau mỗi ngày | [Xem chi tiết](cloud/w8/reflection.md) |
 | **W9** | **GitOps & Advanced CI/CD** | ![Lên kế hoạch](https://img.shields.io/badge/Lên_kế_hoạch-grey) | Nghiên cứu Kubernetes Continuous Delivery, Helm và ArgoCD | [Thư mục W9](cloud/w9/) |
 | **W10**| **Observability & Security** | ![Lên kế hoạch](https://img.shields.io/badge/Lên_kế_hoạch-grey) | Triển khai giám sát với Prometheus, Grafana, triển khai Canary và DevSecOps cơ bản | [Thư mục W10](cloud/w10/) |
 | **W11**| **Capstone - Tuần 1** | ![Lên kế hoạch](https://img.shields.io/badge/Lên_kế_hoạch-grey) | Phối hợp liên đội sản xuất, phân tích yêu cầu và thiết kế kiến trúc hệ thống | [Capstone W11](capstone/w11/) |

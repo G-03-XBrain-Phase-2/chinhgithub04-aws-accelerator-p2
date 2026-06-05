@@ -51,4 +51,8 @@ Thumbs.db
 # Kubernetes manifests secrets containing raw credentials
 **/manifests/02_secret.yaml
 
+# Dynamically generated Kubernetes configuration files
+kubeconfig.yaml
+
+
 
