@@ -124,6 +124,6 @@ cp /root/.kube/config /home/ubuntu/.kube/config
 chown -R ubuntu:ubuntu /home/ubuntu/.kube
 
 # 12. Thay đổi địa chỉ máy chủ API trong kubeconfig thành IP công cộng của EC2
-sed -i "s/server: https:\/\/127.0.0.1:6443/server: https:\/\/${PUBLIC_IP}:6443/g" /home/ubuntu/.kube/config
+sed -i "s/server: https:\/\/0.0.0.0:6443/server: https:\/\/${PUBLIC_IP}:6443/g" /home/ubuntu/.kube/config
 
 echo "=== KUBERNETES KIND PLATFORM INSTALLATION COMPLETED SUCCESSFULLY ==="
