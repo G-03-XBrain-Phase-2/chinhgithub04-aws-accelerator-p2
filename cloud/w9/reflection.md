@@ -1,4 +1,4 @@
-# Nhật ký Học tập và Phản hồi Tuần 09 - Deliver Smartly: GitOps + Observability + Canary
+# W9 Learning Journal & Reflection — Deliver Smartly: GitOps + Observability + Canary
 
 *   **Họ và tên:** Nguyễn Đức Chinh
 *   **ID:** XB-DN26-080
@@ -36,3 +36,30 @@ Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho
 *   [x] Hoàn thiện tệp chuyên đề `theory/02_argocd_patterns.md` về mô hình App-of-Apps, Sync Waves và Sync Hooks.
 *   [x] Hoàn thiện tệp chuyên đề `theory/03_cicd_github_actions.md` về luồng tự động hóa CI/CD cho hạ tầng thông qua GitHub Actions (kèm mẫu YAML).
 *   [x] Hoàn thiện tệp chuyên đề `theory/04_rollback_strategies.md` phân tích chuyên sâu chiến lược rollback qua Git.
+
+---
+
+### Thứ Ba, 09/06/2026 — Day B: Observability Foundations
+
+> **Nhiệm vụ:** Tự học lý thuyết Observability, ba cột trụ Metrics/Traces/Logs, kiến trúc OpenTelemetry (OTel SDK & Collector), hệ sinh thái Prometheus/Loki/Grafana (PLG Stack), phương pháp thiết lập SLO/SLI (Availability & Latency) và cơ chế cảnh báo nâng cao Multi-window Multi-burn-rate Alerting.
+
+#### 1. Lý thuyết thu hoạch được
+
+*   **Observability vs Monitoring**: Phân biệt rõ Monitoring tập trung vào việc cảnh báo triệu chứng (symptoms) của các sự cố đã biết trước (known-unknowns). Observability cung cấp khả năng suy luận trạng thái nội tại hệ thống để tìm hiểu nguyên nhân gốc rễ (root cause) của các sự cố chưa từng biết trước (unknown-unknowns).
+*   **Ba cột trụ của Observability**: Nắm vững các thuộc tính của bộ ba Metrics (độ nén cao, phù hợp alerting), Traces (cho thấy hành trình yêu cầu qua các microservices, định vị latency bottlenecks), và Logs (bản ghi chi tiết độ phân giải cao phục vụ debug lỗi).
+*   **Kiến trúc OpenTelemetry**: Tìm hiểu mô hình OTel SDK tích hợp trong ứng dụng để tạo sinh dữ liệu telemetry chuyển đi qua giao thức OTLP, và OTel Collector hoạt động độc lập thực hiện xử lý dữ liệu qua pipeline ba bước: Receivers (nhận) -> Processors (xử lý, batching, filter) -> Exporters (đẩy dữ liệu ra backends).
+*   **Hệ sinh thái PLG Stack**: 
+    *   *Prometheus*: Thu thập metrics qua cơ chế pull-based scraping, lưu trữ tối ưu trong TSDB, truy vấn qua ngôn ngữ PromQL.
+    *   *Loki*: Quản lý log tối ưu chi phí thông qua cơ chế metadata-based indexing (chỉ đánh chỉ mục nhãn, không index nội dung log), truy vấn qua ngôn ngữ LogQL.
+    *   *Grafana*: Bảng trực quan hóa hợp nhất (unified dashboard) kết nối đa nguồn dữ liệu.
+*   **Phương pháp luận SLO/SLI**: Phân biệt rõ SLI (chỉ số đo lường thực tế), SLO (mục tiêu cam kết tin cậy nội bộ), SLA (hợp đồng pháp lý thương mại). Thiết lập công thức đo lường Availability và Latency dựa trên tỉ lệ request tốt trên tổng request.
+*   **Error Budget & Burn Rate Alerting**: Hiểu rõ ý nghĩa điều hòa của Error Budget giữa Dev và SRE. Nghiên cứu cơ chế Multi-window Multi-burn-rate Alerting của Google giúp cân bằng độ chính xác và tốc độ báo lỗi bằng việc kết hợp đồng thời Long Window và Short Window cho cả Fast Burn Rate (cảnh báo sập nguồn nhanh) và Slow Burn Rate (cảnh báo rò rỉ âm thầm).
+
+#### 2. Kết quả thực hành
+
+Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho Day B tại thư mục `cloud/w9/day-b/` và soạn thảo hệ thống tài liệu chuyên đề lý thuyết chuyên sâu:
+*   [x] Khởi tạo thư mục và hoàn thiện tệp chuyên đề `theory/01_observability_concepts.md` về nền tảng Observability và kiến trúc OpenTelemetry.
+*   [x] Hoàn thiện tệp chuyên đề `theory/02_prometheus_grafana_loki.md` về bộ công cụ PLG Stack (Prometheus, Grafana, Loki).
+*   [x] Hoàn thiện tệp chuyên đề `theory/03_slo_sli_methodology.md` về phương pháp luận thiết lập SLI, SLO và Error Budget.
+*   [x] Hoàn thiện tệp chuyên đề `theory/04_burn_rate_alerting.md` về cơ chế cảnh báo đa khung thời gian Multi-window Multi-burn-rate Alerting.
+
