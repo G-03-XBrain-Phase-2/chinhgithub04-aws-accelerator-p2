@@ -63,3 +63,33 @@ Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho
 *   [x] Hoàn thiện tệp chuyên đề `theory/03_slo_sli_methodology.md` về phương pháp luận thiết lập SLI, SLO và Error Budget.
 *   [x] Hoàn thiện tệp chuyên đề `theory/04_burn_rate_alerting.md` về cơ chế cảnh báo đa khung thời gian Multi-window Multi-burn-rate Alerting.
 
+---
+
+### Thứ Tư, 10/06/2026 — Day C: Progressive Delivery (Canary)
+
+> **Nhiệm vụ:** Tự học lý thuyết Progressive Delivery, so sánh các chiến lược deployment (Rolling Update, Blue/Green, Canary), nghiên cứu kiến trúc Argo Rollouts, cấu trúc tài nguyên Rollout CRD, cơ chế định tuyến lưu lượng truy cập và tự động hóa phân tích qua AnalysisTemplate truy vấn Prometheus cùng cơ chế auto-rollback.
+
+#### 1. Lý thuyết thu hoạch được
+
+*   **Bản chất của Progressive Delivery**: Nhận thức được đây là mô hình cải tiến của Continuous Delivery giúp phát hành phần mềm an toàn bằng cách kiểm soát blast radius, tăng dần traffic và tự động rollback dựa trên hệ thống đo lường chất lượng thực tế.
+*   **So sánh các chiến lược deployment**:
+    *   *Kubernetes Rolling Update*: Đơn giản nhưng thiếu tính năng phân tách traffic theo phần trăm và không tự động rollback dựa trên metrics sức khỏe.
+    *   *Blue/Green*: Chuyển đổi traffic nhanh và an toàn nhưng tiêu tốn gấp đôi tài nguyên hệ thống (100% buffer).
+    *   *Canary*: Cân bằng tối ưu giữa bảo vệ người dùng, tiết kiệm tài nguyên hạ tầng và hỗ trợ kiểm thử tự động với lượng người dùng nhỏ.
+*   **Kiến trúc Argo Rollouts**:
+    *   Sử dụng CRD `Rollout` thay thế cho `Deployment` Kubernetes.
+    *   Định nghĩa các bước chia traffic (`steps`, `setWeight`, `pause`) giúp tùy biến tối đa quy trình phát hành.
+    *   Định tuyến lưu lượng truy cập thông qua sự kết hợp của Stable Service và Canary Service, tích hợp với Ingress Controllers (như Nginx, AWS ALB) để điều tiết HTTP traffic.
+*   **Tự động hóa đánh giá và Auto-rollback**:
+    *   Phân biệt rõ `AnalysisTemplate` (bản vẽ kỹ thuật đo lường), `ClusterAnalysisTemplate` (phạm vi toàn cụm) và `AnalysisRun` (thực thể chạy truy vấn thực tế).
+    *   Thiết lập truy vấn PromQL tự động quét Prometheus định kỳ (`interval`) để đo lường success rate và latency.
+    *   Định nghĩa tiêu chí hủy bỏ (`failureLimit`, `consecutiveErrorLimit`) để kích hoạt auto-rollback tức thì khi phát hiện chỉ số suy yếu hoặc cạn kiệt Error Budget (Burn Rate Alerting), đưa traffic 100% về Stable Service và dọn dẹp các Canary Pods.
+
+#### 2. Kết quả thực hành
+
+Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho Day C tại thư mục `cloud/w9/day-c/` và soạn thảo hệ thống tài liệu chuyên đề lý thuyết chuyên sâu:
+*   [x] Khởi tạo thư mục và hoàn thiện tệp chuyên đề `theory/01_progressive_delivery_concepts.md` về khái niệm Progressive Delivery và so sánh Argo Rollouts vs Flagger.
+*   [x] Hoàn thiện tệp chuyên đề `theory/02_argo_rollouts_crds.md` về cấu trúc tài nguyên Rollout CRD và cơ chế định tuyến.
+*   [x] Hoàn thiện tệp chuyên đề `theory/03_analysis_and_auto_rollback.md` về tự động hóa phân tích Canary qua Prometheus và cơ chế auto-rollback.
+
+
