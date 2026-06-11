@@ -7,6 +7,11 @@ metadata:
     app: web-server
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25% # hoặc để số cụ thể
+      maxSurge: 25%
   selector:
     matchLabels:
       app: web-server
@@ -20,6 +25,13 @@ spec:
         image: nginx:alpine
         ports:
         - containerPort: 80
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "512Mi"
+          requests:
+            memory: "128Mi"
+            cpu: "256Mi"
         env:
         - name: APP_COLOR
           valueFrom:
