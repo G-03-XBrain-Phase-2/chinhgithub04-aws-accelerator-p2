@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: demo
+spec:
+  args:
+  - name: canary-hash
+  metrics:
+  - name: success-rate
+    interval: 10s
+    successCondition: len(result) == 0 || result[0] >= 0.95
+    failureLimit: 10
+    provider:
+      prometheus:
+        address: http://kube-prometheus-stack-prometheus.monitoring:9090
+        query: |
+          sum(rate(flask_http_request_total{status!~"5.*", job="api", namespace="demo", pod=~"api-{{args.canary-hash}}-.*"}[30s])) 
+          / 
+          (sum(rate(flask_http_request_total{job="api", namespace="demo", pod=~"api-{{args.canary-hash}}-.*"}[30s])) + 0.001)

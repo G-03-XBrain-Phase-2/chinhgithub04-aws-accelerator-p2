@@ -92,4 +92,22 @@ Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho
 *   [x] Hoàn thiện tệp chuyên đề `theory/02_argo_rollouts_crds.md` về cấu trúc tài nguyên Rollout CRD và cơ chế định tuyến.
 *   [x] Hoàn thiện tệp chuyên đề `theory/03_analysis_and_auto_rollback.md` về tự động hóa phân tích Canary qua Prometheus và cơ chế auto-rollback.
 
+---
 
+### Thứ Năm + Thứ Sáu, 11-12/06/2026 — Onsite Lab: GitOps & Observability Automation
+
+> **Nhiệm vụ:** Thực hành GitOps hóa nền tảng W8, tích hợp bộ công cụ đo lường SLOs và triển khai Canary.
+
+#### 1. Lý thuyết thu hoạch được (Core Theoretical Takeaways)
+*   **Quy trình GitOps-ify**: Hiểu rõ cách cấu trúc một GitOps repository chuẩn (chia tách thư mục `apps` chứa định nghĩa Application và `k8s` chứa manifests tài nguyên của từng microservice) giúp ArgoCD dễ dàng quản lý theo mô hình App-of-Apps.
+*   **ServiceMonitor & Prometheus Custom Metrics**: Nắm vững phương pháp cấu hình `ServiceMonitor` để Prometheus tự động phát hiện (auto-discover) các endpoints và thu thập metrics tùy biến do ứng dụng Python Flask (`w9-api`) sinh ra.
+*   **Tự động hóa Canary bằng AnalysisTemplate**: Hiểu rõ cách liên kết `Rollout` với `AnalysisTemplate` để tự động thực thi các truy vấn PromQL đo lường success-rate của Canary Pods, từ đó quyết định cho phép nâng cấp hay tự động Abort/Rollback mà không cần can thiệp thủ công.
+*   **Cơ chế cảnh báo an toàn**: Nắm được phương thức bảo mật mật khẩu Gmail của Alertmanager thông qua Kubernetes Secret (thay vì viết trực tiếp lên Git) và cách cấu hình routing để gửi email cảnh báo tự động khi vi phạm ngưỡng SLO.
+
+#### 2. Kết quả thực hành (Practical Checkpoint Evidence)
+*   [x] Triển khai thành công cấu trúc App-of-Apps trên ArgoCD bằng Root Application trỏ tới các tài nguyên con.
+*   [x] Kiểm chứng thành công tính năng **Self-Heal**: Khi scale thủ công số lượng Pod bằng lệnh `kubectl scale`, ArgoCD lập tức đồng bộ hóa và tự phục hồi (healing) về đúng cấu hình Git.
+*   [x] Triển khai thành công bộ công cụ giám sát Prometheus, Grafana và Loki. Cấu hình thành công ServiceMonitor để thu thập metrics của dịch vụ Flask.
+*   [x] **Thử nghiệm Canary thành công**: Triển khai Argo Rollouts cho dịch vụ API với cơ chế tự động phân tích Canary thông qua Prometheus.
+*   [x] **Kiểm chứng Auto-Rollback**: Cố tình deploy phiên bản lỗi `v2` (tỉ lệ lỗi 50%). Hệ thống phát hiện vi phạm SLO (tỉ lệ lỗi > 5%), lập tức Abort quá trình nâng cấp, tự động Rollback 100% traffic về bản `v1` ổn định, đồng thời gửi email cảnh báo về hộp thư Gmail của quản trị viên.
+*   [x] Lưu trữ toàn bộ hình ảnh chứng minh tại thư mục `cloud/w9/lab/media/` và viết báo cáo đầy đủ tại tệp tin [cloud/w9/lab/evidence_pack.md](file:///g:/XBrain/BaiTap/W8/chinhgithub04-aws-accelerator-p2/cloud/w9/lab/evidence_pack.md).
