@@ -63,3 +63,34 @@ Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho
     *   `04_admission_verify_signature.md`: Cơ chế Validating Webhook verify chữ ký ảnh container của Sigstore, ClusterImagePolicy bypass và phân tích Fail-Closed vs Fail-Open.
 
 ---
+
+### Thứ Tư, 17/06/2026 — Day C: Platform Integration & Cost Guard
+
+> **Nhiệm vụ:** Tự học lý thuyết tích hợp toàn stack từ W8 đến W10, thiết lập ResourceQuota và LimitRange để phân vùng tài nguyên, tìm hiểu Chaos Engineering trên Kubernetes, xây dựng Runbooks xử lý sự cố chuẩn và nghiên cứu giải pháp giám sát AWS Cost Anomaly Detection.
+
+#### 1. Lý thuyết thu hoạch được
+
+*   **Quản lý định mức tài nguyên (ResourceQuota & LimitRange)**:
+    *   Thấy rõ tầm quan trọng của việc thiết lập ResourceQuota ở mức namespace để ngăn ngừa hiện tượng "Noisy Neighbor" chiếm dụng tài nguyên toàn cụm.
+    *   Nắm vững vai trò của LimitRange trong việc tự động inject các giá trị CPU/Memory mặc định (requests/limits) cho container khi developer không khai báo, cũng như thiết lập các giới hạn max/min để tránh lãng phí hoặc nghẽn.
+    *   Hiểu rõ ràng khi một namespace đã áp ResourceQuota, bắt buộc mọi container chạy trong đó phải có khai báo resources (nếu không khai báo và không có LimitRange để inject mặc định, API Server sẽ reject yêu cầu tạo Pod).
+*   **Chaos Engineering trên K8s**:
+    *   Hiểu bản chất của Chaos Engineering là chủ động tiêm lỗi vào hệ thống (giả lập sập Pod, sập Node, mất gói tin mạng, DNS delay) để kiểm tra khả năng phục hồi tự động (Self-Healing) và co giãn (HPA) của cụm.
+    *   Nghiên cứu các công cụ CNCF phổ biến như Chaos Mesh (giao diện UI, dễ tiêm lỗi nhanh) và LitmusChaos (hướng khai báo Operator/CRD, tích hợp tốt CI/CD).
+*   **Quy trình ứng phó sự cố & Runbooks**:
+    *   Nắm chắc framework xử lý sự cố 6 bước của AWS: Detect -> Triage -> Contain (cách ly) -> Eradicate (loại bỏ) -> Recover -> Post-mortem (mổ xẻ sự cố không đổ lỗi, viết RCA).
+    *   Thành thạo cấu trúc viết một Runbook vận hành chuẩn gồm dấu hiệu nhận biết, các lệnh chẩn đoán nhanh (diagnostic CLI commands) và kịch bản xử lý khẩn cấp (mitigation steps) đối với các lỗi phổ biến như OOMKilled.
+*   **Giám sát chi phí AWS (Cost Anomaly Detection)**:
+    *   Hiểu nguyên lý hoạt động của AWS Cost Anomaly Detection dựa trên mô hình học máy (Machine Learning) để liên tục phân tích và phát hiện các chi tiêu dị thường (outliers) so với baseline lịch sử.
+    *   Nắm vững quy trình phản ứng nhanh khi nhận cảnh báo chi phí tăng vọt (kiểm tra Cost Explorer theo giờ, trace CloudTrail để tìm nguồn gốc tạo tài nguyên, xóa dọn dẹp và làm việc với AWS Support).
+
+#### 2. Kết quả thực hành
+
+Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho Day C tại thư mục `cloud/w10/day-c/` và soạn thảo hệ thống tài liệu chuyên đề lý thuyết chuyên sâu:
+*   [x] Khởi tạo thành công cấu trúc thư mục học tập `cloud/w10/day-c/` và hoàn thiện 4 tệp chuyên đề lý thuyết chuyên sâu:
+    *   `01_resource_quota_limit_range.md`: Cú pháp YAML, cơ chế hoạt động và cách kết hợp ResourceQuota và LimitRange để bảo vệ cụm K8s.
+    *   `02_chaos_engineering.md`: Triết lý Kỹ nghệ hỗn loạn, so sánh Chaos Mesh vs LitmusChaos và quy trình 4 bước chaos test an toàn.
+    *   `03_incident_runbooks.md`: AWS 6-step IR playbook, phương pháp viết Runbook và tệp mẫu xử lý sự cố OOMKilled trên K8s.
+    *   `04_cost_anomaly_detection.md`: Cơ chế ML của AWS Cost Anomaly Detection, các loại Monitor, cách cấu hình alert qua SNS/Email và kịch bản Cost Incident Runbook.
+
+---
