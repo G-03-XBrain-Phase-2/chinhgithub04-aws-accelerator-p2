@@ -99,15 +99,15 @@ Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho
 > **Nhiệm vụ:** Thực hành GitOps hóa nền tảng W8, tích hợp bộ công cụ đo lường SLOs và triển khai Canary.
 
 #### 1. Lý thuyết thu hoạch được (Core Theoretical Takeaways)
-*   **Quy trình GitOps-ify**: Hiểu rõ cách cấu trúc một GitOps repository chuẩn (chia tách thư mục `apps` chứa định nghĩa Application và `k8s` chứa manifests tài nguyên của từng microservice) giúp ArgoCD dễ dàng quản lý theo mô hình App-of-Apps.
-*   **ServiceMonitor & Prometheus Custom Metrics**: Nắm vững phương pháp cấu hình `ServiceMonitor` để Prometheus tự động phát hiện (auto-discover) các endpoints và thu thập metrics tùy biến do ứng dụng Python Flask (`w9-api`) sinh ra.
-*   **Tự động hóa Canary bằng AnalysisTemplate**: Hiểu rõ cách liên kết `Rollout` với `AnalysisTemplate` để tự động thực thi các truy vấn PromQL đo lường success-rate của Canary Pods, từ đó quyết định cho phép nâng cấp hay tự động Abort/Rollback mà không cần can thiệp thủ công.
-*   **Cơ chế cảnh báo an toàn**: Nắm được phương thức bảo mật mật khẩu Gmail của Alertmanager thông qua Kubernetes Secret (thay vì viết trực tiếp lên Git) và cách cấu hình routing để gửi email cảnh báo tự động khi vi phạm ngưỡng SLO.
+- **Quy trình cấu trúc GitOps (GitOps-ify)**: Hiểu rõ cách tách biệt mã nguồn ứng dụng và cấu hình khai báo vào các thư mục `apps/` (quản lý Application CRD) và `k8s/` (tài nguyên Kubernetes) để thiết lập mô hình App-of-Apps đồng bộ tự động qua ArgoCD.
+- **Thu thập metrics với ServiceMonitor**: Nắm vững cơ chế auto-discover các container endpoints của Prometheus Operator thông qua khai báo `ServiceMonitor` nhắm mục tiêu chuẩn xác vào dịch vụ Python Flask (`w9-api`).
+- **Kiểm duyệt Canary tự động**: Hiểu rõ mối liên kết giữa `Rollout` và `AnalysisTemplate` giúp thực thi các câu lệnh PromQL giám sát trực tiếp tỉ lệ thành công (success-rate) và độ trễ (latency) của các Canary Pods biệt lập.
+- **Cảnh báo qua Alertmanager**: Cấu hình an toàn thông tin nhạy cảm của máy chủ SMTP Gmail thông qua Kubernetes Secret và thiết lập các routing rules để đẩy mail cảnh báo sự cố ngay khi cạn kiệt Error Budget.
 
 #### 2. Kết quả thực hành (Practical Checkpoint Evidence)
-*   [x] Triển khai thành công cấu trúc App-of-Apps trên ArgoCD bằng Root Application trỏ tới các tài nguyên con.
-*   [x] Kiểm chứng thành công tính năng **Self-Heal**: Khi scale thủ công số lượng Pod bằng lệnh `kubectl scale`, ArgoCD lập tức đồng bộ hóa và tự phục hồi (healing) về đúng cấu hình Git.
-*   [x] Triển khai thành công bộ công cụ giám sát Prometheus, Grafana và Loki. Cấu hình thành công ServiceMonitor để thu thập metrics của dịch vụ Flask.
-*   [x] **Thử nghiệm Canary thành công**: Triển khai Argo Rollouts cho dịch vụ API với cơ chế tự động phân tích Canary thông qua Prometheus.
-*   [x] **Kiểm chứng Auto-Rollback**: Cố tình deploy phiên bản lỗi `v2` (tỉ lệ lỗi 50%). Hệ thống phát hiện vi phạm SLO (tỉ lệ lỗi > 5%), lập tức Abort quá trình nâng cấp, tự động Rollback 100% traffic về bản `v1` ổn định, đồng thời gửi email cảnh báo về hộp thư Gmail của quản trị viên.
-*   [x] Lưu trữ toàn bộ hình ảnh chứng minh tại thư mục `cloud/w9/lab/media/` và viết báo cáo đầy đủ tại tệp tin [cloud/w9/lab/evidence_pack.md](file:///g:/XBrain/BaiTap/W8/chinhgithub04-aws-accelerator-p2/cloud/w9/lab/evidence_pack.md).
+- [x] Tổ chức thành công cấu trúc dự án chuẩn GitOps và đồng bộ hóa toàn bộ ứng dụng qua Root Application trên ArgoCD.
+- [x] **Kiểm chứng Self-Heal**: Chạy thử lệnh `kubectl scale` để giảm số lượng Pods về 0, ArgoCD lập tức phát hiện OutOfSync và tự động reconcile khôi phục số lượng Pods về đúng cấu hình Git.
+- [x] Triển khai thành công bộ công cụ PLG Stack (Prometheus, Loki, Grafana) và verify luồng scrape metrics của custom API.
+- [x] **Kiểm chứng Canary & Auto-Rollback**: Triển khai phiên bản lỗi `v2` (tỉ lệ lỗi 50%), hệ thống đánh giá `AnalysisRun` thất bại, lập tức abort quá trình rollout và rollback 100% traffic về phiên bản `v1` ổn định mà không cần thao tác tay.
+- [x] Tích hợp Alertmanager gửi email cảnh báo về hộp thư Gmail thành công khi hệ thống gặp lỗi.
+- [x] Hoàn thiện toàn bộ báo cáo và lưu trữ ảnh minh chứng tại tệp tin [evidence_pack.md](lab/evidence_pack.md).
