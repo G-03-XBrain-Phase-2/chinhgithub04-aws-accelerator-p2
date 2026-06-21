@@ -94,3 +94,24 @@ Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho
     *   `04_cost_anomaly_detection.md`: Cơ chế ML của AWS Cost Anomaly Detection, các loại Monitor, cách cấu hình alert qua SNS/Email và kịch bản Cost Incident Runbook.
 
 ---
+
+### Thứ Năm + Thứ Sáu, 18-19/06/2026 — Onsite Lab & Challenge: Platform Hardening & Multi-tenancy Isolation
+
+> **Nhiệm vụ:** Thực hiện khắc phục 6 rủi ro bảo mật chính của cụm Kubernetes (RBAC, Gatekeeper Policies, Custom ConstraintTemplate), tích hợp xoay vòng secret qua AWS Secrets Manager và ESO dưới 60 giây (Zero-Downtime), thiết lập CI Trivy Scan, ký ảnh với Cosign, onboard team payments mới với đầy đủ chính sách cô lập Multi-tenancy (NetworkPolicy, LimitRange, ResourceQuota).
+
+#### 1. Lý thuyết thu hoạch được (Core Theoretical Takeaways)
+- **Tác động vĩ mô của Guardrails**: Thấu hiểu tính kế thừa tự động của các chính sách ở phạm vi Cluster (Cluster-scoped) như Gatekeeper Constraints và ClusterImagePolicy. Nhờ đó, bất kỳ namespace mới nào (như `payments`) đều tự động chịu sự kiểm duyệt mà không cần nhân bản cấu hình hoặc can thiệp thủ công.
+- **Ranh giới cô lập NetworkPolicy**: Nắm rõ cách viết chính sách mạng cô lập Multi-tenancy thông qua kết hợp `namespaceSelector` và `podSelector`. Hiểu cách chặn đứng kết nối chéo giữa các tenant nhưng vẫn giữ thông suốt cho DNS nội bộ và quyền truy cập internet.
+- **Xác thực chữ ký số & Khắc phục lỗ hổng**: Khẳng định sự an toàn khi kết hợp quét lỗ hổng ảnh container (Trivy) ở CI và verify chữ ký số (Cosign) tại Admission Control (Sigstore Policy Controller). Thấu hiểu vì sao deploy ảnh chưa ký bị chặn ngay ở vòng gửi xe (Admission Webhook).
+
+#### 2. Kết quả thực hành (Practical Checkpoint Evidence)
+- [x] Phân quyền thành công 3 Role rõ rệt (Developer, SRE, Viewer) cho các namespaces và kiểm chứng phân quyền least-privilege cho team payments.
+- [x] Thiết lập thành công 4 Gatekeeper Constraints bảo vệ cụm khỏi các manifest không an toàn (latest tag, no limits, run-as-root, hostNetwork).
+- [x] Tự định nghĩa thành công Custom ConstraintTemplate yêu cầu bắt buộc có label `owner` cho Deployment/Pod.
+- [x] Tích hợp thành công AWS Secrets Manager với ESO và kiểm chứng đồng bộ mật khẩu dưới 60 giây không cần restart Pod (Zero-Downtime rotation qua volume mount).
+- [x] Thực thi thành công Trivy Scan chặn merge PR chứa lỗ hổng bảo mật và verify Sigstore Policy Controller chặn đứng ảnh container chưa ký số.
+- [x] Cấu hình LimitRange tự động inject resources mặc định cho các Pod của team payments để bypass Gatekeeper và ResourceQuota.
+- [x] Áp dụng thành công NetworkPolicy chặn đứng kết nối chéo giữa namespace `payments` và `demo`, verify lỗi Timeout trong khi DNS nội bộ và internet vẫn thông suốt.
+- [x] Hoàn thiện toàn bộ báo cáo và lưu trữ ảnh minh chứng tại tệp tin [README.md](lab/README.md).
+
+---
