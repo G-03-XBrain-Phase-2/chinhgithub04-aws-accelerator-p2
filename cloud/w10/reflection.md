@@ -36,3 +36,30 @@ Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho
 *   [x] Hoàn thiện tệp chuyên đề `theory/03_opa_gatekeeper.md` về OPA Gatekeeper, Rego syntax cùng ví dụ viết ConstraintTemplate và Constraint để cấm các container registry không đáng tin cậy.
 
 ---
+
+### Thứ Ba, 16/06/2026 — Day B: Secrets Rotation & Supply Chain Security
+
+> **Nhiệm vụ:** Tự học lý thuyết Secrets Rotation, AWS Secrets Manager + External Secrets Operator (ESO), quét lỗ hổng ảnh container bằng Trivy trong CI, ký số ảnh container bằng Cosign (keyless OIDC + key-based) và xác thực chữ ký số tại Admission Control qua Sigstore Policy Controller.
+
+#### 1. Lý thuyết thu hoạch được
+
+*   **Vấn đề xoay vòng Secret & ESO**:
+    *   Nhận diện hiểm họa của việc lưu Base64 secrets tĩnh trực tiếp trên Git. Phân tích sự cần thiết của cơ chế rotation (xoay vòng mật khẩu tự động) trên AWS Secrets Manager kết hợp với External Secrets Operator (ESO) để tự động hóa việc đồng bộ bí mật vào cụm.
+    *   Phân tích cơ chế nạp cấu hình: Sử dụng biến môi trường (Environment Variables) bắt buộc phải restart Pod để nhận giá trị mới; sử dụng Volume Mount cho phép Kubelet tự cập nhật tệp tin gắn trong container. Kết hợp với cơ chế lắng nghe tệp tin thay đổi (File Watcher) trong code ứng dụng, ta đạt được Zero-Downtime Secrets Rotation thực thụ.
+*   **Quét lỗ hổng ảnh container (Trivy)**:
+    *   Hiểu rõ triết lý Shift-left Security: quét lỗ hổng và kiểm soát cấu hình sai (misconfigurations) ngay từ phase Build trong CI pipeline thay vì phát hiện muộn ở runtime.
+    *   Thành thạo cấu hình Fail-on policy (trả về mã thoát khác 0) để chặn đứng build chạy lỗi và cơ chế tạo ngoại lệ bảo mật tạm thời có quy trình phê duyệt qua `.trivyignore`.
+*   **Ký số & Admission Control (Cosign & Sigstore)**:
+    *   Nắm vững cơ chế ký Key-based (cặp khóa bất đối xứng tự sinh) và Keyless (ký không dùng khóa, xác thực qua danh tính OIDC của workflow build, Fulcio CA cấp cert tạm thời và Rekor ghi audit log).
+    *   Hiểu cách Sigstore Policy Controller hoạt động như chốt chặn Validating Webhook cuối cùng trong cụm để chặn đứng ảnh không khớp chữ ký trong ClusterImagePolicy. Phân tích sự đánh đổi bảo mật giữa Fail-Closed và Fail-Open webhook.
+
+#### 2. Kết quả thực hành
+
+Em đã hoàn thành việc thiết lập cấu trúc thư mục học tập cho Day B tại thư mục `cloud/w10/day-b/` và soạn thảo hệ thống tài liệu chuyên đề lý thuyết chuyên sâu:
+*   [x] Khởi tạo thành công cấu trúc thư mục học tập `cloud/w10/day-b/` và hoàn thiện 4 tệp chuyên đề lý thuyết chuyên sâu:
+    *   `01_eso_secrets_rotation.md`: Kiến trúc ESO, cấu hình YAML mẫu cho SecretStore, ExternalSecret và phân tích cơ chế Zero-Downtime Rotation qua Volume.
+    *   `02_trivy_ci_scan.md`: Quy trình Trivy Scan trong CI, cấu hình fail-on pipeline và quản lý CVE ngoại lệ qua `.trivyignore`.
+    *   `03_cosign_image_signing.md`: Cơ chế hoạt động của Cosign, so sánh Key-based vs Keyless (OIDC/Fulcio/Rekor).
+    *   `04_admission_verify_signature.md`: Cơ chế Validating Webhook verify chữ ký ảnh container của Sigstore, ClusterImagePolicy bypass và phân tích Fail-Closed vs Fail-Open.
+
+---
