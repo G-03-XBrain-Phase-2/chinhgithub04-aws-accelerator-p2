@@ -1,4 +1,5 @@
 data "archive_file" "lambda_zip" {
+  count       = var.package_type == "Zip" ? 1 : 0
   type        = "zip"
   source_dir  = var.source_dir
   output_path = "${path.module}/files/${var.function_name}.zip"
@@ -54,13 +55,17 @@ resource "aws_iam_role_policy_attachment" "custom_policy_attach" {
 resource "aws_lambda_function" "this" {
   function_name    = var.function_name
   description      = var.description
-  handler          = var.handler
-  runtime          = var.runtime
   timeout          = var.timeout
   memory_size      = var.memory_size
   role             = aws_iam_role.lambda_role.arn
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  package_type     = var.package_type
+
+  handler          = var.package_type == "Zip" ? var.handler : null
+  runtime          = var.package_type == "Zip" ? var.runtime : null
+  filename         = var.package_type == "Zip" ? data.archive_file.lambda_zip[0].output_path : null
+  source_code_hash = var.package_type == "Zip" ? data.archive_file.lambda_zip[0].output_base64sha256 : null
+
+  image_uri        = var.package_type == "Image" ? var.image_uri : null
 
   dynamic "environment" {
     for_each = length(var.environment_variables) > 0 ? [1] : []

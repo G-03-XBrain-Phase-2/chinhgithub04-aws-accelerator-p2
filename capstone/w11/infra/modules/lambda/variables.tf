@@ -11,13 +11,26 @@ variable "description" {
 
 variable "handler" {
   type        = string
-  description = "Điểm khởi chạy (entry point) của Lambda function (ví dụ: index.handler)"
+  default     = null
+  description = "Điểm khởi chạy (entry point) của Lambda function (ví dụ: index.handler) - Chỉ cần cho package_type = Zip"
 }
 
 variable "runtime" {
   type        = string
-  default     = "python3.9"
-  description = "Môi trường thực thi (runtime) của Lambda function"
+  default     = null
+  description = "Môi trường thực thi (runtime) của Lambda function - Chỉ cần cho package_type = Zip"
+}
+
+variable "package_type" {
+  type        = string
+  default     = "Zip"
+  description = "Kiểu đóng gói của Lambda function (Zip hoặc Image)"
+}
+
+variable "image_uri" {
+  type        = string
+  default     = null
+  description = "Đường dẫn URI của container image trong ECR - Chỉ cần cho package_type = Image"
 }
 
 variable "timeout" {
@@ -34,7 +47,8 @@ variable "memory_size" {
 
 variable "source_dir" {
   type        = string
-  description = "Đường dẫn thư mục cục bộ chứa mã nguồn của Lambda để tự động nén ZIP"
+  default     = null
+  description = "Đường dẫn thư mục cục bộ chứa mã nguồn của Lambda để tự động nén ZIP - Chỉ cần cho package_type = Zip"
 }
 
 variable "environment_variables" {
