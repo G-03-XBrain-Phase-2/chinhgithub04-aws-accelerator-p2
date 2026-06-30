@@ -8,7 +8,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket               = "terraform-state-capstone-CDO-03"
+    bucket               = "tfstate-capstone-cdo-03"
     key                  = "infra/environments/production/terraform.tfstate"
     region               = "ap-southeast-1"
     use_lockfile         = true
