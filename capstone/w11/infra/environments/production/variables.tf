@@ -192,3 +192,33 @@ variable "anomaly_queue_create_dlq" {
   type        = bool
   description = "Quyết định có tạo Dead Letter Queue cho anomaly queue hay không"
 }
+
+variable "idempotency_table_name" {
+  type        = string
+  description = "Tên bảng DynamoDB để lưu idempotency key"
+}
+
+variable "idempotency_table_hash_key" {
+  type        = string
+  description = "Partition Key cho bảng idempotency"
+}
+
+variable "idempotency_table_ttl_attribute" {
+  type        = string
+  description = "Thuộc tính TTL cho bảng idempotency"
+}
+
+variable "feature_store_table_name" {
+  type        = string
+  description = "Tên bảng DynamoDB để lưu trữ feature vectors"
+}
+
+variable "feature_store_table_hash_key" {
+  type        = string
+  description = "Partition Key cho bảng feature store"
+}
+
+variable "feature_store_table_range_key" {
+  type        = string
+  description = "Sort Key (Range Key) cho bảng feature store"
+}

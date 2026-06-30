@@ -93,3 +93,25 @@ module "anomaly_queue" {
   fifo_queue   = var.anomaly_queue_fifo
   create_dlq   = var.anomaly_queue_create_dlq
 }
+
+module "idempotency_table" {
+  source = "../../modules/dynamodb"
+
+  project_name  = var.project_name
+  table_name    = var.idempotency_table_name
+  hash_key      = var.idempotency_table_hash_key
+  hash_key_type = "S"
+  ttl_enabled   = true
+  ttl_attribute = var.idempotency_table_ttl_attribute
+}
+
+module "feature_store_table" {
+  source = "../../modules/dynamodb"
+
+  project_name   = var.project_name
+  table_name     = var.feature_store_table_name
+  hash_key       = var.feature_store_table_hash_key
+  hash_key_type  = "S"
+  range_key      = var.feature_store_table_range_key
+  range_key_type = "S"
+}
