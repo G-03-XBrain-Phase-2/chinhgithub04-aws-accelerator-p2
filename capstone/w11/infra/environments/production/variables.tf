@@ -86,3 +86,34 @@ variable "lambda_handler" {
   type        = string
   description = "Hàm xử lý chính (handler) của lambda function"
 }
+
+variable "ai_engine_alb_name" {
+  type        = string
+  description = "Tên định danh cho ALB của AI Engine"
+}
+
+variable "ai_engine_alb_internal" {
+  type        = bool
+  description = "Xác định ALB của AI Engine là internal hay internet-facing"
+}
+
+variable "ai_engine_alb_listener_port" {
+  type        = number
+  description = "Port cho Listener của ALB AI Engine"
+}
+
+variable "ai_engine_alb_target_group_port" {
+  type        = number
+  description = "Port cho Target Group của ALB AI Engine"
+}
+
+variable "ai_engine_alb_ingress_rules" {
+  type = list(object({
+    from_port       = number
+    to_port         = number
+    protocol        = string
+    cidr_blocks     = optional(list(string))
+    security_groups = optional(list(string))
+  }))
+  description = "Danh sách Ingress rules cho ALB AI Engine"
+}

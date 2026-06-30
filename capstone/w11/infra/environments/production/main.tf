@@ -26,3 +26,19 @@ module "hello_world_lambda" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = values(module.vpc.private_subnet_ids)
 }
+
+module "ai_engine_alb" {
+  source = "../../modules/alb"
+
+  project_name = var.project_name
+  alb_name     = var.ai_engine_alb_name
+  internal     = var.ai_engine_alb_internal
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = values(module.vpc.private_subnet_ids)
+
+  listener_port     = var.ai_engine_alb_listener_port
+  target_group_port = var.ai_engine_alb_target_group_port
+
+  ingress_rules = var.ai_engine_alb_ingress_rules
+}
