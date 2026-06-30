@@ -117,3 +117,33 @@ variable "ai_engine_alb_ingress_rules" {
   }))
   description = "Danh sách Ingress rules cho ALB AI Engine"
 }
+
+variable "ai_engine_ecs_service_name" {
+  type        = string
+  description = "Tên service của AI Engine trong ECS"
+}
+
+variable "ai_engine_ecs_container_image" {
+  type        = string
+  description = "URI image của AI Engine"
+}
+
+variable "ai_engine_ecs_container_port" {
+  type        = number
+  description = "Port mà AI Engine container lắng nghe"
+}
+
+variable "ai_engine_ecs_cpu" {
+  type        = number
+  description = "CPU allocation cho AI Engine Fargate task"
+}
+
+variable "ai_engine_ecs_memory" {
+  type        = number
+  description = "Memory allocation cho AI Engine Fargate task"
+}
+
+variable "ai_engine_ecs_desired_count" {
+  type        = number
+  description = "Số task Fargate mong muốn chạy"
+}

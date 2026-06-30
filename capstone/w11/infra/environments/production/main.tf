@@ -42,3 +42,20 @@ module "ai_engine_alb" {
 
   ingress_rules = var.ai_engine_alb_ingress_rules
 }
+
+module "ai_engine_ecs" {
+  source = "../../modules/ecs"
+
+  project_name          = var.project_name
+  service_name          = var.ai_engine_ecs_service_name
+  vpc_id                = module.vpc.vpc_id
+  subnet_ids            = values(module.vpc.private_subnet_ids)
+  alb_security_group_id = module.ai_engine_alb.security_group_id
+
+  container_image  = var.ai_engine_ecs_container_image
+  container_port   = var.ai_engine_ecs_container_port
+  cpu              = var.ai_engine_ecs_cpu
+  memory           = var.ai_engine_ecs_memory
+  desired_count    = var.ai_engine_ecs_desired_count
+  target_group_arn = module.ai_engine_alb.target_group_arn
+}
