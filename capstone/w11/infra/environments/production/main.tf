@@ -11,7 +11,7 @@ module "vpc" {
   database_route_tables = var.database_route_tables
 }
 
-module "hello_world_lambda" {
+module "telemetry_lambda" {
   source = "../../modules/lambda"
 
   project_name  = var.project_name
@@ -21,7 +21,7 @@ module "hello_world_lambda" {
   package_type = "Zip"
   runtime      = var.lambda_runtime
   handler      = var.lambda_handler
-  source_dir   = "${path.module}/src/hello_world"
+  source_dir   = "${path.module}/src/telemetry_collector"
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = values(module.vpc.private_subnet_ids)
@@ -39,7 +39,7 @@ module "hello_world_lambda" {
     TENANT_ID          = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
   }
 
-  iam_policy_document_json = data.aws_iam_policy_document.hello_world_lambda_custom_policy.json
+  iam_policy_document_json = data.aws_iam_policy_document.telemetry_lambda_custom_policy.json
 }
 
 module "ai_engine_alb" {
@@ -91,13 +91,13 @@ module "lambda_two" {
   subnet_ids = values(module.vpc.private_subnet_ids)
 }
 
-module "hello_world_schedule" {
+module "telemetry_schedule" {
   source = "../../modules/eventbridge"
 
   project_name        = var.project_name
   schedule_name       = var.hello_world_schedule_name
   schedule_expression = var.hello_world_schedule_expression
-  target_arn          = module.hello_world_lambda.arn
+  target_arn          = module.telemetry_lambda.arn
 }
 
 module "anomaly_queue" {
@@ -178,7 +178,7 @@ resource "aws_s3_object" "cost_explorer_data" {
   etag   = filemd5("${path.module}/data/cost_explorer_daily.csv")
 }
 
-data "aws_iam_policy_document" "hello_world_lambda_custom_policy" {
+data "aws_iam_policy_document" "telemetry_lambda_custom_policy" {
   statement {
     sid    = "S3Access"
     effect = "Allow"
