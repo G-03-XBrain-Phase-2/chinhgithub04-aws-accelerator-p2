@@ -237,3 +237,13 @@ variable "athena_workgroup_name" {
   type        = string
   description = "Tên Athena Workgroup"
 }
+
+variable "telemetry_bucket_project_name" {
+  type        = string
+  description = "Prefix dự án cho Telemetry bucket (để tuân thủ format company-cdo)"
+}
+
+variable "telemetry_bucket_name" {
+  type        = string
+  description = "Tên định danh của Telemetry bucket (ví dụ: {account_id}-telemetry)"
+}

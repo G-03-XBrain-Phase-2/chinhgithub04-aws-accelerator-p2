@@ -132,3 +132,11 @@ module "athena" {
   workgroup_name               = var.athena_workgroup_name
   athena_results_bucket_s3_uri = "s3://${module.athena_results_bucket.bucket_id}/results/"
 }
+
+module "telemetry_bucket" {
+  source = "../../modules/s3"
+
+  project_name       = var.telemetry_bucket_project_name
+  bucket_name        = var.telemetry_bucket_name
+  versioning_enabled = true
+}
