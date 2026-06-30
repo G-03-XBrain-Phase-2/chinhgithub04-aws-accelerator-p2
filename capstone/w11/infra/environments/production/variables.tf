@@ -177,3 +177,18 @@ variable "hello_world_schedule_expression" {
   type        = string
   description = "Biểu thức cron/rate của EventBridge Schedule (chạy mỗi 2h sáng)"
 }
+
+variable "anomaly_queue_name" {
+  type        = string
+  description = "Tên của SQS Queue nhận danh sách bất thường"
+}
+
+variable "anomaly_queue_fifo" {
+  type        = bool
+  description = "Xác định SQS Queue nhận danh sách bất thường là FIFO hay Standard"
+}
+
+variable "anomaly_queue_create_dlq" {
+  type        = bool
+  description = "Quyết định có tạo Dead Letter Queue cho anomaly queue hay không"
+}

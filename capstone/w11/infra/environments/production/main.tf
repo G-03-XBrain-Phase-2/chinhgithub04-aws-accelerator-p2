@@ -84,3 +84,12 @@ module "hello_world_schedule" {
   schedule_expression = var.hello_world_schedule_expression
   target_arn          = module.hello_world_lambda.arn
 }
+
+module "anomaly_queue" {
+  source = "../../modules/sqs"
+
+  project_name = var.project_name
+  queue_name   = var.anomaly_queue_name
+  fifo_queue   = var.anomaly_queue_fifo
+  create_dlq   = var.anomaly_queue_create_dlq
+}
