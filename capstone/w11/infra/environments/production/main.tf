@@ -25,6 +25,21 @@ module "hello_world_lambda" {
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = values(module.vpc.private_subnet_ids)
+
+  timeout    = 300
+
+  environment_variables = {
+    TELEMETRY_BUCKET   = module.telemetry_bucket.bucket_id
+    RAW_CUR_BUCKET     = module.raw_cur_bucket.bucket_id
+    ATHENA_DATABASE    = module.athena.database_name
+    ATHENA_WORKGROUP   = module.athena.workgroup_name
+    ATHENA_RESULTS_URI = "s3://${module.athena_results_bucket.bucket_id}/results/"
+    IDEMPOTENCY_TABLE  = module.idempotency_table.table_name
+    AI_ENGINE_URL      = "http://${module.ai_engine_alb.alb_dns_name}/v1/detect"
+    TENANT_ID          = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+  }
+
+  iam_policy_document_json = data.aws_iam_policy_document.hello_world_lambda_custom_policy.json
 }
 
 module "ai_engine_alb" {
@@ -161,4 +176,89 @@ resource "aws_s3_object" "cost_explorer_data" {
   key    = "cost-explorer/cost_explorer_daily.csv"
   source = "${path.module}/data/cost_explorer_daily.csv"
   etag   = filemd5("${path.module}/data/cost_explorer_daily.csv")
+}
+
+data "aws_iam_policy_document" "hello_world_lambda_custom_policy" {
+  statement {
+    sid    = "S3Access"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:ListBucket",
+      "s3:DeleteObject",
+      "s3:GetBucketLocation",
+      "s3:ListBucketMultipartUploads",
+      "s3:ListMultipartUploadParts",
+      "s3:AbortMultipartUpload"
+    ]
+    resources = [
+      module.raw_cur_bucket.arn,
+      "${module.raw_cur_bucket.arn}/*",
+      module.telemetry_bucket.arn,
+      "${module.telemetry_bucket.arn}/*",
+      module.athena_results_bucket.arn,
+      "${module.athena_results_bucket.arn}/*"
+    ]
+  }
+
+  statement {
+    sid    = "DynamoDBAccess"
+    effect = "Allow"
+    actions = [
+      "dynamodb:PutItem",
+      "dynamodb:GetItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:Query",
+      "dynamodb:Scan"
+    ]
+    resources = [
+      module.idempotency_table.arn,
+      module.feature_store_table.arn
+    ]
+  }
+
+  statement {
+    sid    = "AthenaAccess"
+    effect = "Allow"
+    actions = [
+      "athena:StartQueryExecution",
+      "athena:GetQueryExecution",
+      "athena:GetQueryResults",
+      "athena:StopQueryExecution",
+      "athena:GetWorkGroup"
+    ]
+    resources = [
+      "*"
+    ]
+  }
+
+  statement {
+    sid    = "GlueAccess"
+    effect = "Allow"
+    actions = [
+      "glue:GetDatabase",
+      "glue:GetTable",
+      "glue:GetPartitions",
+      "glue:CreateTable",
+      "glue:DeleteTable",
+      "glue:UpdateTable",
+      "glue:GetTables"
+    ]
+    resources = [
+      "*"
+    ]
+  }
+
+  statement {
+    sid    = "CostExplorerAccess"
+    effect = "Allow"
+    actions = [
+      "ce:GetCostAndUsage"
+    ]
+    resources = [
+      "*"
+    ]
+  }
 }
