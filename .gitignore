@@ -55,3 +55,6 @@ Thumbs.db
 kubeconfig.yaml
 
 tfplan
+
+# Production data CSVs
+**/production/data/

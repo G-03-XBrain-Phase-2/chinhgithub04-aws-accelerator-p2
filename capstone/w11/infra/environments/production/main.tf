@@ -140,3 +140,25 @@ module "telemetry_bucket" {
   bucket_name        = var.telemetry_bucket_name
   versioning_enabled = true
 }
+
+module "raw_cur_bucket" {
+  source = "../../modules/s3"
+
+  project_name       = var.raw_cur_bucket_project_name
+  bucket_name        = var.raw_cur_bucket_name
+  versioning_enabled = true
+}
+
+resource "aws_s3_object" "cur_data" {
+  bucket = module.raw_cur_bucket.bucket_id
+  key    = "cur/cur_line_items.csv"
+  source = "${path.module}/data/cur_line_items.csv"
+  etag   = filemd5("${path.module}/data/cur_line_items.csv")
+}
+
+resource "aws_s3_object" "cost_explorer_data" {
+  bucket = module.raw_cur_bucket.bucket_id
+  key    = "cost-explorer/cost_explorer_daily.csv"
+  source = "${path.module}/data/cost_explorer_daily.csv"
+  etag   = filemd5("${path.module}/data/cost_explorer_daily.csv")
+}

@@ -247,3 +247,13 @@ variable "telemetry_bucket_name" {
   type        = string
   description = "Tên định danh của Telemetry bucket (ví dụ: {account_id}-telemetry)"
 }
+
+variable "raw_cur_bucket_project_name" {
+  type        = string
+  description = "Prefix dự án cho Raw CUR bucket"
+}
+
+variable "raw_cur_bucket_name" {
+  type        = string
+  description = "Tên định danh của Raw CUR bucket (ví dụ: {account_id}-raw-cur)"
+}
