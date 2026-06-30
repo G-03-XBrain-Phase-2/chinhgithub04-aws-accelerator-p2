@@ -79,3 +79,21 @@ variable "project_name" {
   type        = string
   description = "Tên của dự án (ví dụ: finops-watch)"
 }
+
+variable "vpc_id" {
+  type        = string
+  default     = ""
+  description = "ID của VPC, bắt buộc cung cấp nếu muốn Lambda chạy trong VPC (subnet_ids != []) để tạo tự động Security Group"
+}
+
+variable "subnet_ids" {
+  type        = list(string)
+  default     = []
+  description = "Danh sách Subnet IDs nếu muốn Lambda chạy trong VPC"
+}
+
+variable "security_group_ids" {
+  type        = list(string)
+  default     = []
+  description = "Danh sách các Security Group IDs bổ sung nếu muốn gắn thêm vào Lambda (không bắt buộc, module sẽ tự tạo 1 SG mặc định nếu có vpc_id)"
+}

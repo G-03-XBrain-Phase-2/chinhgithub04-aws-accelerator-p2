@@ -66,3 +66,23 @@ variable "database_route_tables" {
   default     = {}
   description = "Cấu hình Database Route Tables"
 }
+
+variable "lambda_function_name" {
+  type        = string
+  description = "Tên của lambda function"
+}
+
+variable "lambda_description" {
+  type        = string
+  description = "Mô tả cho lambda function"
+}
+
+variable "lambda_runtime" {
+  type        = string
+  description = "Runtime môi trường chạy của lambda function"
+}
+
+variable "lambda_handler" {
+  type        = string
+  description = "Hàm xử lý chính (handler) của lambda function"
+}
