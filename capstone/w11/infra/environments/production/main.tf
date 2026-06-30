@@ -75,3 +75,12 @@ module "lambda_two" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = values(module.vpc.private_subnet_ids)
 }
+
+module "hello_world_schedule" {
+  source = "../../modules/eventbridge"
+
+  project_name        = var.project_name
+  schedule_name       = var.hello_world_schedule_name
+  schedule_expression = var.hello_world_schedule_expression
+  target_arn          = module.hello_world_lambda.arn
+}

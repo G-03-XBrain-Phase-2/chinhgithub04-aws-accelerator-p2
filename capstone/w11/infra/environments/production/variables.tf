@@ -167,3 +167,13 @@ variable "lambda_two_handler" {
   type        = string
   description = "Handler cho Lambda function thứ hai"
 }
+
+variable "hello_world_schedule_name" {
+  type        = string
+  description = "Tên EventBridge Schedule cho Hello World Lambda"
+}
+
+variable "hello_world_schedule_expression" {
+  type        = string
+  description = "Biểu thức cron/rate của EventBridge Schedule (chạy mỗi 2h sáng)"
+}
