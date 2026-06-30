@@ -147,3 +147,23 @@ variable "ai_engine_ecs_desired_count" {
   type        = number
   description = "Số task Fargate mong muốn chạy"
 }
+
+variable "lambda_two_function_name" {
+  type        = string
+  description = "Tên của Lambda function thứ hai"
+}
+
+variable "lambda_two_description" {
+  type        = string
+  description = "Mô tả cho Lambda function thứ hai"
+}
+
+variable "lambda_two_runtime" {
+  type        = string
+  description = "Runtime cho Lambda function thứ hai"
+}
+
+variable "lambda_two_handler" {
+  type        = string
+  description = "Handler cho Lambda function thứ hai"
+}

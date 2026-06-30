@@ -59,3 +59,19 @@ module "ai_engine_ecs" {
   desired_count    = var.ai_engine_ecs_desired_count
   target_group_arn = module.ai_engine_alb.target_group_arn
 }
+
+module "lambda_two" {
+  source = "../../modules/lambda"
+
+  project_name  = var.project_name
+  function_name = var.lambda_two_function_name
+  description   = var.lambda_two_description
+
+  package_type = "Zip"
+  runtime      = var.lambda_two_runtime
+  handler      = var.lambda_two_handler
+  source_dir   = "${path.module}/src/lambda_two"
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = values(module.vpc.private_subnet_ids)
+}
