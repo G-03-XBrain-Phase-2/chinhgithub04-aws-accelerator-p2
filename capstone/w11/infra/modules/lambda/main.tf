@@ -46,7 +46,7 @@ resource "aws_iam_role_policy_attachment" "vpc_access" {
 }
 
 resource "aws_security_group" "lambda_sg" {
-  count       = length(var.subnet_ids) > 0 && var.vpc_id != "" ? 1 : 0
+  count       = length(var.subnet_ids) > 0 ? 1 : 0
   name        = "${var.project_name}-lambda-sg-${var.function_name}"
   description = "Security group automatically created for lambda ${var.function_name}"
   vpc_id      = var.vpc_id
@@ -102,7 +102,7 @@ resource "aws_lambda_function" "this" {
     content {
       subnet_ids = var.subnet_ids
       security_group_ids = compact(concat(
-        var.vpc_id != "" ? [aws_security_group.lambda_sg[0].id] : [],
+        length(var.subnet_ids) > 0 ? [aws_security_group.lambda_sg[0].id] : [],
         var.security_group_ids
       ))
     }

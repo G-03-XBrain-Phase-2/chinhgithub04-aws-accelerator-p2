@@ -8,12 +8,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket               = "tfstate-capstone-cdo-03"
-    key                  = "infra/environments/production/terraform.tfstate"
-    region               = "ap-southeast-1"
-    use_lockfile         = true
-    encrypt              = true
-    use_configurable_mfa = false
+    bucket       = "tfstate-capstone-cdo-03"
+    key          = "infra/environments/production/terraform.tfstate"
+    region       = "ap-southeast-1"
+    use_lockfile = true
+    encrypt      = true
   }
 }
 

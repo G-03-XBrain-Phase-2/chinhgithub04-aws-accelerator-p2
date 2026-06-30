@@ -54,5 +54,4 @@ Thumbs.db
 # Dynamically generated Kubernetes configuration files
 kubeconfig.yaml
 
-
-
+tfplan
