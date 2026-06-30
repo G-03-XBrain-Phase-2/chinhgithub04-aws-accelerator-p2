@@ -6,6 +6,15 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  backend "s3" {
+    bucket               = "terraform-state-capstone-CDO-03"
+    key                  = "infra/environments/production/terraform.tfstate"
+    region               = "ap-southeast-1"
+    use_lockfile         = true
+    encrypt              = true
+    use_configurable_mfa = false
+  }
 }
 
 provider "aws" {
@@ -13,8 +22,10 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Environment = "production"
+      Environment = var.tags["Environment"]
+      Owner       = var.tags["Owner"]
       Project     = var.project_name
+      ManagedBy   = "Terraform"
     }
   }
 }

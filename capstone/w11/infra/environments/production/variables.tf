@@ -8,6 +8,11 @@ variable "project_name" {
   description = "Tên của dự án (ví dụ: finops-watch)"
 }
 
+variable "tags" {
+  type        = map(string)
+  description = "Các tag được áp dụng cho tài nguyên"
+}
+
 variable "vpc_cidr" {
   type        = string
   description = "Dải CIDR block cho VPC"
