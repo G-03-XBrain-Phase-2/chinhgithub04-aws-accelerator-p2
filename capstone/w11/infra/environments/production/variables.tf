@@ -222,3 +222,18 @@ variable "feature_store_table_range_key" {
   type        = string
   description = "Sort Key (Range Key) cho bảng feature store"
 }
+
+variable "athena_results_bucket_name" {
+  type        = string
+  description = "Tên S3 Bucket lưu kết quả query Athena"
+}
+
+variable "athena_database_name" {
+  type        = string
+  description = "Tên Glue Catalog Database cho Athena"
+}
+
+variable "athena_workgroup_name" {
+  type        = string
+  description = "Tên Athena Workgroup"
+}

@@ -115,3 +115,20 @@ module "feature_store_table" {
   range_key      = var.feature_store_table_range_key
   range_key_type = "S"
 }
+
+module "athena_results_bucket" {
+  source = "../../modules/s3"
+
+  project_name              = var.project_name
+  bucket_name               = var.athena_results_bucket_name
+  lifecycle_expiration_days = 7
+}
+
+module "athena" {
+  source = "../../modules/athena"
+
+  project_name                 = var.project_name
+  database_name                = var.athena_database_name
+  workgroup_name               = var.athena_workgroup_name
+  athena_results_bucket_s3_uri = "s3://${module.athena_results_bucket.bucket_id}/results/"
+}

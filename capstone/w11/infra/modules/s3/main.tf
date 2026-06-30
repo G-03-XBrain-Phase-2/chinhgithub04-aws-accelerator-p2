@@ -40,6 +40,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
     id     = "auto-clean-old-data"
     status = "Enabled"
 
+    filter {}
+
     expiration {
       days = var.lifecycle_expiration_days
     }
