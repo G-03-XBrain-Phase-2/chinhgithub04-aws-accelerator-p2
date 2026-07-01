@@ -17,3 +17,9 @@ output "database_subnet_ids" {
   value       = module.vpc.database_subnet_ids
   description = "Bản đồ ID của các Database Subnets"
 }
+
+output "ecr_repository_url" {
+  value       = module.ai_engine_ecr.repository_url
+  description = "URL của ECR Repository vừa tạo"
+}
+

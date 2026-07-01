@@ -765,6 +765,7 @@ def handler(event, context):
     # 10. Call AI Engine /detect API
     print(f"Calling AI Engine URL: {ai_engine_url}")
     print(f"Headers: {json.dumps(headers)}")
+    print(f"Payload sent to AI Engine: {req_body_str}")
     
     req = urllib.request.Request(
         ai_engine_url,

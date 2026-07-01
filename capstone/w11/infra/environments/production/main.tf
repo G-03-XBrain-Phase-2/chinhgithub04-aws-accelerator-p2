@@ -70,7 +70,7 @@ module "ai_engine_ecs" {
   subnet_ids            = values(module.vpc.private_subnet_ids)
   alb_security_group_id = module.ai_engine_alb.security_group_id
 
-  container_image  = var.ai_engine_ecs_container_image
+  container_image  = "${module.ai_engine_ecr.repository_url}:latest"
   container_port   = var.ai_engine_ecs_container_port
   cpu              = var.ai_engine_ecs_cpu
   memory           = var.ai_engine_ecs_memory
@@ -140,7 +140,7 @@ module "ai_engine_ecs" {
     },
     {
       name  = "RCA_MODE"
-      value = "false"
+      value = "bedrock"
     }
   ]
 }
@@ -340,5 +340,12 @@ resource "aws_iam_role_policy" "ai_engine_ecs_custom_policy" {
   name   = "ai-engine-ecs-custom-policy"
   role   = element(split("/", module.ai_engine_ecs.task_role_arn), 1)
   policy = data.aws_iam_policy_document.telemetry_lambda_custom_policy.json
+}
+
+module "ai_engine_ecr" {
+  source = "../../modules/ecr"
+
+  project_name    = var.project_name
+  repository_name = "ai-engine"
 }
 
