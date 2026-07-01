@@ -38,6 +38,7 @@ module "telemetry_lambda" {
     FEATURE_STORE_TABLE = module.feature_store_table.table_name
     AI_ENGINE_URL       = "http://${module.ai_engine_alb.alb_dns_name}/v1/detect"
     TENANT_ID           = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+    ANOMALY_QUEUE_URL   = module.anomaly_queue.queue_id
   }
 
   iam_policy_document_json = data.aws_iam_policy_document.telemetry_lambda_custom_policy.json
@@ -352,6 +353,17 @@ data "aws_iam_policy_document" "telemetry_lambda_custom_policy" {
     ]
     resources = [
       "*"
+    ]
+  }
+
+  statement {
+    sid    = "SQSSendMessage"
+    effect = "Allow"
+    actions = [
+      "sqs:SendMessage"
+    ]
+    resources = [
+      module.anomaly_queue.queue_arn
     ]
   }
 }

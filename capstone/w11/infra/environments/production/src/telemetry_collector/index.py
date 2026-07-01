@@ -890,10 +890,45 @@ def handler(event, context):
                 )
                 print(f"Idempotency key {idempotency_key} updated to COMPLETED")
             
+            # 11. Push each anomaly into SQS (if any)
+            anomalies_detected = response_data.get('anomalies_detected', False)
+            anomalies_list = response_data.get('anomalies_list') or []
+            
+            if not anomalies_detected or not anomalies_list:
+                print("No anomalies detected — skipping SQS push.")
+                return {
+                    'statusCode': 200,
+                    'body': response_data
+                }
+            
+            anomaly_queue_url = os.environ.get('ANOMALY_QUEUE_URL')
+            if not anomaly_queue_url:
+                print("WARNING: ANOMALY_QUEUE_URL not set — skipping SQS push.")
+                return {
+                    'statusCode': 200,
+                    'body': response_data
+                }
+            
+            sqs = boto3.client('sqs')
+            correlation_id = response_data.get('correlation_id', 'unknown')
+            
+            print(f"Pushing {len(anomalies_list)} anomaly(ies) to SQS: {anomaly_queue_url}")
+            for anomaly in anomalies_list:
+                message_body = json.dumps({
+                    'correlation_id': correlation_id,
+                    'anomaly': anomaly
+                })
+                sqs.send_message(
+                    QueueUrl=anomaly_queue_url,
+                    MessageBody=message_body
+                )
+                print(f"Pushed anomaly {anomaly.get('anomaly_id', '?')} to SQS")
+            
             return {
                 'statusCode': 200,
                 'body': response_data
             }
+
             
     except urllib.error.HTTPError as e:
         err_body = e.read().decode('utf-8')
