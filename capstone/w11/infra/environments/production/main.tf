@@ -161,10 +161,19 @@ module "lambda_two" {
   create_role = false
   role_arn    = aws_iam_role.lambda_two_role.arn
 
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = values(module.vpc.private_subnet_ids)
+
   policy_depends_on = [
     aws_iam_role_policy_attachment.lambda_two_basic.id,
+    aws_iam_role_policy_attachment.lambda_two_vpc.id,
     aws_iam_role_policy_attachment.lambda_two_sqs_policy_attach.id,
   ]
+
+  environment_variables = {
+    AI_ENGINE_URL = "http://${module.ai_engine_alb.alb_dns_name}/v1/decide"
+    TENANT_ID     = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+  }
 
   event_source_mappings = {
     sqs_trigger = {
@@ -430,6 +439,11 @@ data "aws_iam_policy_document" "lambda_two_sqs_policy_document" {
 resource "aws_iam_role_policy_attachment" "lambda_two_sqs_policy_attach" {
   role       = aws_iam_role.lambda_two_role.name
   policy_arn = aws_iam_policy.lambda_two_sqs_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_two_vpc" {
+  role       = aws_iam_role.lambda_two_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
 
