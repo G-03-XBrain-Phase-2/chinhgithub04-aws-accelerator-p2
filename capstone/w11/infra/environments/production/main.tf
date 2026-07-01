@@ -57,6 +57,8 @@ module "ai_engine_alb" {
   target_group_port = var.ai_engine_alb_target_group_port
 
   ingress_rules = var.ai_engine_alb_ingress_rules
+
+  health_check_path = "/health"
 }
 
 module "ai_engine_ecs" {
@@ -74,6 +76,73 @@ module "ai_engine_ecs" {
   memory           = var.ai_engine_ecs_memory
   desired_count    = var.ai_engine_ecs_desired_count
   target_group_arn = module.ai_engine_alb.target_group_arn
+
+  environment_variables = [
+    {
+      name  = "FINOPS_ENVIRONMENT"
+      value = "production"
+    },
+    {
+      name  = "FINOPS_AWS_REGION"
+      value = var.aws_region
+    },
+    {
+      name  = "AWS_REGION"
+      value = var.aws_region
+    },
+    {
+      name  = "FINOPS_PORT"
+      value = tostring(var.ai_engine_ecs_container_port)
+    },
+    {
+      name  = "FINOPS_ENABLE_DYNAMODB"
+      value = "true"
+    },
+    {
+      name  = "FINOPS_DYNAMODB_IDEMPOTENCY_TABLE"
+      value = module.idempotency_table.table_name
+    },
+    {
+      name  = "DYNAMODB_IDEMPOTENCY_TABLE"
+      value = module.idempotency_table.table_name
+    },
+    {
+      name  = "FINOPS_DYNAMODB_FEATURE_STORE_TABLE"
+      value = module.feature_store_table.table_name
+    },
+    {
+      name  = "DYNAMODB_FEATURE_STORE_TABLE"
+      value = module.feature_store_table.table_name
+    },
+    {
+      name  = "FINOPS_ENABLE_S3"
+      value = "true"
+    },
+    {
+      name  = "FINOPS_S3_TELEMETRY_BUCKET"
+      value = module.telemetry_bucket.bucket_id
+    },
+    {
+      name  = "S3_TELEMETRY_BUCKET"
+      value = module.telemetry_bucket.bucket_id
+    },
+    {
+      name  = "FINOPS_ENABLE_LLM_ANALYSIS"
+      value = "false"
+    },
+    {
+      name  = "BEDROCK_REGION"
+      value = var.aws_region
+    },
+    {
+      name  = "DYNAMODB_TABLE"
+      value = module.idempotency_table.table_name
+    },
+    {
+      name  = "RCA_MODE"
+      value = "false"
+    }
+  ]
 }
 
 module "lambda_two" {
@@ -266,3 +335,10 @@ data "aws_iam_policy_document" "telemetry_lambda_custom_policy" {
     ]
   }
 }
+
+resource "aws_iam_role_policy" "ai_engine_ecs_custom_policy" {
+  name   = "ai-engine-ecs-custom-policy"
+  role   = element(split("/", module.ai_engine_ecs.task_role_arn), 1)
+  policy = data.aws_iam_policy_document.telemetry_lambda_custom_policy.json
+}
+

@@ -174,6 +174,7 @@ def handler(event, context):
     # 1. Determine date range
     # Support manual date input in event like: {"date": "2026-03-26"}
     override_date = event.get('date') if isinstance(event, dict) else None
+    override_account = event.get('linked_account_id') if isinstance(event, dict) else None
     if override_date:
         today_dt = datetime.strptime(override_date, '%Y-%m-%d')
     else:
@@ -246,10 +247,11 @@ def handler(event, context):
             'body': f"Failed to initialize Athena tables: {str(e)}"
         }
         
-    # 3. Query CUR for yesterday
+    account_filter = f"AND line_item_usage_account_id = '{override_account}'" if override_account else ""
     cur_query = f"""
     SELECT * FROM cur_line_items 
     WHERE substr(line_item_usage_start_date, 1, 10) = '{yesterday_str}'
+    {account_filter}
     """
     
     cur_rows = []
@@ -428,7 +430,6 @@ def handler(event, context):
             start_date_str = start_date_dt.strftime('%Y-%m-%d')
             print(f"Retrieving 28-day history from {start_date_str} to {yesterday_str}...")
             
-            # 2. Execute Athena query for history
             history_query = f"""
             SELECT 
               line_item_resource_id, 
@@ -438,6 +439,7 @@ def handler(event, context):
             FROM cur_line_items
             WHERE substr(line_item_usage_start_date, 1, 10) >= '{start_date_str}'
               AND substr(line_item_usage_start_date, 1, 10) <= '{yesterday_str}'
+              {account_filter}
             GROUP BY line_item_resource_id, substr(line_item_usage_start_date, 1, 10), line_item_product_code
             """
             
@@ -587,7 +589,17 @@ def handler(event, context):
                         imputed_val = product_medians.get(prod_code, {}).get(metric)
                         if imputed_val is None:
                             imputed_val = global_medians[metric]
-                        f[metric] = imputed_val
+                        
+                        # Preserve spikes for anomaly-detecting metrics
+                        if metric in ('cost_ratio_to_7d_avg', 'absolute_cost_spike', 'peer_ratio'):
+                            f[metric] = max(f[metric], imputed_val)
+                        elif metric in ('rolling_avg', 'rolling_std'):
+                            # Only impute baseline stats if they are 0.0
+                            if f[metric] == 0.0:
+                                f[metric] = imputed_val
+                        else:
+                            # Unconditionally impute 14d/28d stats
+                            f[metric] = imputed_val
                         
             # 8. Build final DynamoDB items and write
             cur_lookup = {r['line_item_resource_id']: r for r in cur_items if r.get('line_item_resource_id')}
@@ -690,11 +702,14 @@ def handler(event, context):
     
     # 8. Build POST Request Body
     # Get linked account id for business context
-    linked_acc = "200000000010"
-    if cur_items:
-        linked_acc = cur_items[0]["line_item_usage_account_id"]
-    elif ce_items:
-        linked_acc = ce_items[0]["linked_account_id"]
+    if override_account:
+        linked_acc = override_account
+    else:
+        linked_acc = "200000000010"
+        if cur_items:
+            linked_acc = cur_items[0]["line_item_usage_account_id"]
+        elif ce_items:
+            linked_acc = ce_items[0]["linked_account_id"]
         
     business_context = {
         "linked_account_id": linked_acc,
