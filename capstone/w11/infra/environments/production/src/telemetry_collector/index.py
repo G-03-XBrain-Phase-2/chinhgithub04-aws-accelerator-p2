@@ -238,9 +238,38 @@ def handler(event, context):
     TBLPROPERTIES ("skip.header.line.count"="1")
     """
     
+    ddl_util = f"""
+    CREATE EXTERNAL TABLE IF NOT EXISTS resource_utilization (
+      date string,
+      resource_id string,
+      line_item_usage_account_id string,
+      line_item_usage_account_name string,
+      aws_service string,
+      resource_type string,
+      region string,
+      environment string,
+      cpu_percent string,
+      cpu_utilization_hourly string,
+      memory_mib string,
+      network_in_bytes string,
+      network_out_bytes string,
+      disk_io_ops string,
+      database_connections string,
+      gpu_utilization string
+    )
+    ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+    WITH SERDEPROPERTIES (
+      "separatorChar" = ",",
+      "quoteChar"     = "\\""
+    )
+    LOCATION 's3://{raw_cur_bucket}/utilization/'
+    TBLPROPERTIES ("skip.header.line.count"="1")
+    """
+    
     try:
         run_athena_query(ddl_cur, athena_database, athena_workgroup, athena_results_uri)
         run_athena_query(ddl_ce, athena_database, athena_workgroup, athena_results_uri)
+        run_athena_query(ddl_util, athena_database, athena_workgroup, athena_results_uri)
     except Exception as e:
         print(f"Error creating Athena tables: {e}")
         return {
@@ -262,6 +291,19 @@ def handler(event, context):
         print(f"CUR query returned {len(cur_rows)} records for {yesterday_str}")
     except Exception as e:
         print(f"Error querying CUR: {e}")
+        
+    util_lookup = {}
+    try:
+        util_query = f"""
+        SELECT * FROM resource_utilization 
+        WHERE date = '{yesterday_str}'
+        """
+        qid_util = run_athena_query(util_query, athena_database, athena_workgroup, athena_results_uri)
+        util_rows = get_athena_results(qid_util)
+        print(f"Utilization query returned {len(util_rows)} records for {yesterday_str}")
+        util_lookup = {r.get('resource_id'): r for r in util_rows if r.get('resource_id')}
+    except Exception as e:
+        print(f"Error querying utilization metrics: {e}")
         
     # 4. Process data and generate payload
     telemetry_delay_event = False
@@ -650,6 +692,57 @@ def handler(event, context):
                 else:
                     usage_density = 1.0
                 
+                util = util_lookup.get(res_id, {})
+                
+                cpu_mean = None
+                if util.get('cpu_percent'):
+                    try:
+                        cpu_mean = float(util['cpu_percent'])
+                    except ValueError:
+                        pass
+                
+                memory_mib = None
+                if util.get('memory_mib'):
+                    try:
+                        memory_mib = float(util['memory_mib'])
+                    except ValueError:
+                        pass
+                        
+                network_in_bytes = None
+                if util.get('network_in_bytes'):
+                    try:
+                        network_in_bytes = float(util['network_in_bytes'])
+                    except ValueError:
+                        pass
+                        
+                network_out_bytes = None
+                if util.get('network_out_bytes'):
+                    try:
+                        network_out_bytes = float(util['network_out_bytes'])
+                    except ValueError:
+                        pass
+                        
+                disk_io_ops = None
+                if util.get('disk_io_ops'):
+                    try:
+                        disk_io_ops = float(util['disk_io_ops'])
+                    except ValueError:
+                        pass
+                        
+                database_connections = None
+                if util.get('database_connections'):
+                    try:
+                        database_connections = float(util['database_connections'])
+                    except ValueError:
+                        pass
+                        
+                gpu_utilization = None
+                if util.get('gpu_utilization'):
+                    try:
+                        gpu_utilization = float(util['gpu_utilization'])
+                    except ValueError:
+                        pass
+
                 item = {
                     'resource_id': res_id,
                     'date': yesterday_str,
@@ -672,14 +765,14 @@ def handler(event, context):
                     'peer_ratio': f['peer_ratio'],
                     'age_days': f['age_days'],
                     
-                    'cpu_mean': None,
+                    'cpu_mean': cpu_mean,
                     'usage_density_24h': usage_density,
-                    'memory_mib': None,
-                    'network_in_bytes': None,
-                    'network_out_bytes': None,
-                    'disk_io_ops': None,
-                    'database_connections': None,
-                    'gpu_utilization': None,
+                    'memory_mib': memory_mib,
+                    'network_in_bytes': network_in_bytes,
+                    'network_out_bytes': network_out_bytes,
+                    'disk_io_ops': disk_io_ops,
+                    'database_connections': database_connections,
+                    'gpu_utilization': gpu_utilization,
                     
                     'resource_tags_user_environment': env,
                     'resource_tags_user_team': team,

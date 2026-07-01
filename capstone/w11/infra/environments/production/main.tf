@@ -250,6 +250,13 @@ resource "aws_s3_object" "cost_explorer_data" {
   etag   = filemd5("${path.module}/data/cost_explorer_daily.csv")
 }
 
+resource "aws_s3_object" "resource_utilization_data" {
+  bucket = module.raw_cur_bucket.bucket_id
+  key    = "utilization/resource_utilization_metrics.csv"
+  source = "${path.module}/data/resource_utilization_metrics.csv"
+  etag   = filemd5("${path.module}/data/resource_utilization_metrics.csv")
+}
+
 data "aws_iam_policy_document" "telemetry_lambda_custom_policy" {
   statement {
     sid    = "S3Access"
