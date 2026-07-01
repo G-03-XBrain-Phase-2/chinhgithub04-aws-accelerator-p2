@@ -157,8 +157,20 @@ module "lambda_two" {
   handler      = var.lambda_two_handler
   source_dir   = "${path.module}/src/lambda_two"
 
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = values(module.vpc.private_subnet_ids)
+  create_role = false
+  role_arn    = aws_iam_role.lambda_two_role.arn
+
+  policy_depends_on = [
+    aws_iam_role_policy_attachment.lambda_two_basic.id,
+    aws_iam_role_policy_attachment.lambda_two_sqs_policy_attach.id,
+  ]
+
+  event_source_mappings = {
+    sqs_trigger = {
+      event_source_arn = module.anomaly_queue.queue_arn
+      batch_size       = 1
+    }
+  }
 }
 
 module "telemetry_schedule" {
@@ -356,4 +368,56 @@ module "ai_engine_ecr" {
   project_name    = var.project_name
   repository_name = "ai-engine"
 }
+
+resource "aws_iam_role" "lambda_two_role" {
+  name               = "${var.lambda_two_function_name}-role"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_generic.json
+
+  tags = {
+    Name = "${var.project_name}-lambda-role-${var.lambda_two_function_name}"
+  }
+}
+
+data "aws_iam_policy_document" "lambda_assume_role_generic" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    effect  = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_two_basic" {
+  role       = aws_iam_role.lambda_two_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_policy" "lambda_two_sqs_policy" {
+  name        = "${var.lambda_two_function_name}-sqs-policy"
+  description = "SQS access policy for lambda two"
+  policy      = data.aws_iam_policy_document.lambda_two_sqs_policy_document.json
+}
+
+data "aws_iam_policy_document" "lambda_two_sqs_policy_document" {
+  statement {
+    sid    = "SQSReceive"
+    effect = "Allow"
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+      "sqs:GetQueueAttributes"
+    ]
+    resources = [
+      module.anomaly_queue.queue_arn
+    ]
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_two_sqs_policy_attach" {
+  role       = aws_iam_role.lambda_two_role.name
+  policy_arn = aws_iam_policy.lambda_two_sqs_policy.arn
+}
+
 

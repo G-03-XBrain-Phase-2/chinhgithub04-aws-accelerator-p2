@@ -26,6 +26,7 @@ data "aws_iam_policy_document" "lambda_assume_role" {
 }
 
 resource "aws_iam_role" "lambda_role" {
+  count              = var.create_role ? 1 : 0
   name               = "${var.function_name}-role"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
 
@@ -35,13 +36,14 @@ resource "aws_iam_role" "lambda_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "basic_execution" {
-  role       = aws_iam_role.lambda_role.name
+  count      = var.create_role ? 1 : 0
+  role       = aws_iam_role.lambda_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 resource "aws_iam_role_policy_attachment" "vpc_access" {
-  count      = length(var.subnet_ids) > 0 ? 1 : 0
-  role       = aws_iam_role.lambda_role.name
+  count      = (var.create_role && length(var.subnet_ids) > 0) ? 1 : 0
+  role       = aws_iam_role.lambda_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
@@ -64,15 +66,15 @@ resource "aws_security_group" "lambda_sg" {
 }
 
 resource "aws_iam_policy" "custom_policy" {
-  count       = var.iam_policy_document_json != "" ? 1 : 0
+  count       = (var.create_role && var.iam_policy_document_json != "") ? 1 : 0
   name        = "${var.function_name}-custom-policy"
   description = "Custom policy for Lambda function ${var.function_name}"
   policy      = var.iam_policy_document_json
 }
 
 resource "aws_iam_role_policy_attachment" "custom_policy_attach" {
-  count      = var.iam_policy_document_json != "" ? 1 : 0
-  role       = aws_iam_role.lambda_role.name
+  count      = (var.create_role && var.iam_policy_document_json != "") ? 1 : 0
+  role       = aws_iam_role.lambda_role[0].name
   policy_arn = aws_iam_policy.custom_policy[0].arn
 }
 resource "aws_lambda_function" "this" {
@@ -80,7 +82,7 @@ resource "aws_lambda_function" "this" {
   description   = var.description
   timeout       = var.timeout
   memory_size   = var.memory_size
-  role          = aws_iam_role.lambda_role.arn
+  role          = var.create_role ? aws_iam_role.lambda_role[0].arn : var.role_arn
   package_type  = var.package_type
 
   handler          = var.package_type == "Zip" ? var.handler : null
@@ -132,4 +134,22 @@ resource "aws_lambda_function_url" "this" {
     expose_headers    = ["keep-alive"]
     max_age           = 86400
   }
+}
+
+resource "terraform_data" "policy_trigger" {
+  input = var.policy_depends_on
+}
+
+resource "aws_lambda_event_source_mapping" "this" {
+  for_each          = var.event_source_mappings
+  event_source_arn  = each.value.event_source_arn
+  function_name     = aws_lambda_function.this.arn
+  batch_size        = each.value.batch_size
+  enabled           = each.value.enabled
+  starting_position = each.value.starting_position
+
+  depends_on = [
+    aws_lambda_function.this,
+    terraform_data.policy_trigger
+  ]
 }

@@ -9,12 +9,12 @@ output "arn" {
 }
 
 output "role_name" {
-  value       = aws_iam_role.lambda_role.name
+  value       = try(aws_iam_role.lambda_role[0].name, "")
   description = "Tên của IAM Execution Role"
 }
 
 output "role_arn" {
-  value       = aws_iam_role.lambda_role.arn
+  value       = try(aws_iam_role.lambda_role[0].arn, var.role_arn)
   description = "ARN của IAM Execution Role"
 }
 

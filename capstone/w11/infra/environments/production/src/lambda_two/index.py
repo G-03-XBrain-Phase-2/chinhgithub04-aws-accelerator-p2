@@ -1,6 +1,10 @@
 def handler(event, context):
-    print("Hello from Lambda Two in Production Private Subnet!")
+    print("Lambda Decision Handler invoked via SQS!")
+    print(f"Received event: {event}")
+    for record in event.get('Records', []):
+        body = record.get('body')
+        print(f"Processing SQS message body: {body}")
     return {
         "statusCode": 200,
-        "body": "Hello from Lambda Two!"
-    }
+        "body": "Lambda Decision Handler executed successfully!"
+     }

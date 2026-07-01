@@ -97,3 +97,32 @@ variable "security_group_ids" {
   default     = []
   description = "Danh sách các Security Group IDs bổ sung nếu muốn gắn thêm vào Lambda (không bắt buộc, module sẽ tự tạo 1 SG mặc định nếu có vpc_id)"
 }
+
+variable "role_arn" {
+  type        = string
+  default     = ""
+  description = "ARN of the IAM role to use for the Lambda function. If provided, the module will not create a new IAM role."
+}
+
+variable "event_source_mappings" {
+  type = map(object({
+    event_source_arn  = string
+    batch_size        = optional(number)
+    enabled           = optional(bool, true)
+    starting_position = optional(string)
+  }))
+  default     = {}
+  description = "Map of event source mappings (triggers) for the Lambda function."
+}
+
+variable "create_role" {
+  type        = bool
+  default     = true
+  description = "Whether to create the IAM execution role inside the module. Set to false if role_arn is provided."
+}
+
+variable "policy_depends_on" {
+  type        = list(string)
+  default     = []
+  description = "Danh sách policy attachment IDs bên ngoài để đảm bảo event source mapping chờ đủ quyền IAM trước khi được tạo."
+}
