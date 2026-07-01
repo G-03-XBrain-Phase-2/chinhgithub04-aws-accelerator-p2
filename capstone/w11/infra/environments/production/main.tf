@@ -434,6 +434,18 @@ data "aws_iam_policy_document" "lambda_two_sqs_policy_document" {
       module.anomaly_queue.queue_arn
     ]
   }
+
+  statement {
+    sid    = "SSMGetParameter"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters"
+    ]
+    resources = [
+      "arn:aws:ssm:*:*:parameter/finops-watch/*"
+    ]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_two_sqs_policy_attach" {
@@ -445,5 +457,22 @@ resource "aws_iam_role_policy_attachment" "lambda_two_vpc" {
   role       = aws_iam_role.lambda_two_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
+
+module "slack_webhook_finance" {
+  source = "../../modules/ssm"
+
+  name        = "/${var.project_name}/finance/slack-webhook"
+  value       = var.slack_webhook_finance
+  description = "Slack Webhook URL for the Finance team"
+}
+
+module "slack_webhook_engineer" {
+  source = "../../modules/ssm"
+
+  name        = "/${var.project_name}/engineer/slack-webhook"
+  value       = var.slack_webhook_engineer
+  description = "Slack Webhook URL for the Engineer team"
+}
+
 
 

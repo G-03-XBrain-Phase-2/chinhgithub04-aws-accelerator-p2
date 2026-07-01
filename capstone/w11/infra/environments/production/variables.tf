@@ -257,3 +257,18 @@ variable "raw_cur_bucket_name" {
   type        = string
   description = "Tên định danh của Raw CUR bucket (ví dụ: {account_id}-raw-cur)"
 }
+
+variable "slack_webhook_finance" {
+  type        = string
+  sensitive   = true
+  default     = "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+  description = "Slack Webhook URL cho team Finance (#finops-alert-finance)"
+}
+
+variable "slack_webhook_engineer" {
+  type        = string
+  sensitive   = true
+  default     = "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+  description = "Slack Webhook URL cho team Engineer (#finops-alert-engineering)"
+}
+
