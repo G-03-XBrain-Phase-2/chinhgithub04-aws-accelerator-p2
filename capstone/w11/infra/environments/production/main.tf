@@ -171,8 +171,9 @@ module "lambda_two" {
   ]
 
   environment_variables = {
-    AI_ENGINE_URL = "http://${module.ai_engine_alb.alb_dns_name}/v1/decide"
-    TENANT_ID     = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+    AI_ENGINE_URL       = "http://${module.ai_engine_alb.alb_dns_name}/v1/decide"
+    TENANT_ID           = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+    ANOMALY_STATE_TABLE = module.anomaly_state_table.table_name
   }
 
   event_source_mappings = {
@@ -223,6 +224,16 @@ module "feature_store_table" {
   range_key_type = "S"
   ttl_enabled    = true
   ttl_attribute  = "ttl_expiry"
+}
+
+module "anomaly_state_table" {
+  source = "../../modules/dynamodb"
+
+  project_name  = var.project_name
+  table_name    = var.anomaly_state_table_name
+  hash_key      = var.anomaly_state_table_hash_key
+  hash_key_type = "S"
+  ttl_enabled   = false
 }
 
 module "athena_results_bucket" {
@@ -444,6 +455,20 @@ data "aws_iam_policy_document" "lambda_two_sqs_policy_document" {
     ]
     resources = [
       "arn:aws:ssm:*:*:parameter/finops-watch/*"
+    ]
+  }
+
+  statement {
+    sid    = "DynamoDBAccess"
+    effect = "Allow"
+    actions = [
+      "dynamodb:PutItem",
+      "dynamodb:GetItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:DeleteItem"
+    ]
+    resources = [
+      module.anomaly_state_table.arn
     ]
   }
 }

@@ -223,6 +223,16 @@ variable "feature_store_table_range_key" {
   description = "Sort Key (Range Key) cho bảng feature store"
 }
 
+variable "anomaly_state_table_name" {
+  type        = string
+  description = "Tên bảng DynamoDB để lưu trữ trạng thái của containment action"
+}
+
+variable "anomaly_state_table_hash_key" {
+  type        = string
+  description = "Partition Key cho bảng anomaly state"
+}
+
 variable "athena_results_bucket_name" {
   type        = string
   description = "Tên S3 Bucket lưu kết quả query Athena"

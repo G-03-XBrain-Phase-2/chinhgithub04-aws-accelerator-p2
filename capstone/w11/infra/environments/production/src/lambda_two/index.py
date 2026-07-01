@@ -55,6 +55,16 @@ def execute_containment_action(action_type, target, cli_command, anomaly_id):
                         {'Key': 'finops:anomaly-id', 'Value': anomaly_id}
                     ]
                 )
+            elif "sagemaker" in target:
+                sagemaker_client = boto3.client('sagemaker', region_name='ap-southeast-1')
+                arn = target if target.startswith("arn:") else f"arn:aws:sagemaker:ap-southeast-1:812527291603:notebook-instance/{target}"
+                sagemaker_client.add_tags(
+                    ResourceArn=arn,
+                    Tags=[
+                        {'Key': 'finops:review', 'Value': 'pending'},
+                        {'Key': 'finops:anomaly-id', 'Value': anomaly_id}
+                    ]
+                )
             else:
                 ec2_client = boto3.client('ec2', region_name='ap-southeast-1')
                 ec2_client.create_tags(
@@ -311,6 +321,8 @@ def handler(event, context):
                     
                     is_safe_to_contain = (not is_prod) and is_obvious_pattern
                     
+                    # Initialize containment_status to a default if not run
+                    containment_status = "No containment action suggested by AI"
                     if action_type and cli_command:
                         containment_status = "Skipped (dry-run)"
                         if is_safe_to_contain:
@@ -322,14 +334,108 @@ def handler(event, context):
                                 containment_status = "Skipped (Dry-run: Production environment guardrail)"
                             else:
                                 containment_status = "Skipped (Dry-run: Non-obvious pattern)"
-                                
-                        slack_message["blocks"].append({
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": f"⚙️ *Containment Action:* `{action_type}`\n`{cli_command}`\n*Status:* `{containment_status}`"
+
+                        # UI depending on is_safe_to_contain
+                        if is_safe_to_contain:
+                            # Đối với anomaly đã containment safe: Hiện cụ thể những gì đã làm. Sau đó có 1 nút chấp nhận hoặc rollback
+                            slack_message["blocks"].append({
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": f"⚙️ *Auto Containment SAFE Executed:*\n• *Action:* `{action_type}`\n• *Target:* `{anomaly.get('resource_id')}`\n• *Status:* `{containment_status}`"
+                                }
+                            })
+                            slack_message["blocks"].append({
+                                "type": "actions",
+                                "block_id": "containment_actions",
+                                "elements": [
+                                    {
+                                        "type": "button",
+                                        "text": {
+                                            "type": "plain_text",
+                                            "text": "Chấp nhận",
+                                            "emoji": True
+                                        },
+                                        "style": "primary",
+                                        "action_id": "approve_containment",
+                                        "value": json.dumps({"anomaly_id": anomaly_id, "action": "approve"})
+                                    },
+                                    {
+                                        "type": "button",
+                                        "text": {
+                                            "type": "plain_text",
+                                            "text": "Rollback",
+                                            "emoji": True
+                                        },
+                                        "style": "danger",
+                                        "action_id": "rollback_containment",
+                                        "value": json.dumps({"anomaly_id": anomaly_id, "action": "rollback"})
+                                    }
+                                ]
+                            })
+                        else:
+                            # Đối với anomaly prod (hoặc không thể containment safe): Hiện cụ thể phải làm những gì. Sau đó có 1 nút chấp nhận và từ chối.
+                            slack_message["blocks"].append({
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": f"⚙️ *Recommended Containment Action (Manual Approval Required):*\n• *Action:* `{action_type}`\n• *Target:* `{anomaly.get('resource_id')}`\n• *Command:* `{cli_command}`\n• *Status:* `{containment_status}`"
+                                }
+                            })
+                            slack_message["blocks"].append({
+                                "type": "actions",
+                                "block_id": "containment_actions",
+                                "elements": [
+                                    {
+                                        "type": "button",
+                                        "text": {
+                                            "type": "plain_text",
+                                            "text": "Chấp nhận",
+                                            "emoji": True
+                                        },
+                                        "style": "primary",
+                                        "action_id": "approve_containment",
+                                        "value": json.dumps({"anomaly_id": anomaly_id, "action": "approve"})
+                                    },
+                                    {
+                                        "type": "button",
+                                        "text": {
+                                            "type": "plain_text",
+                                            "text": "Từ chối",
+                                            "emoji": True
+                                        },
+                                        "style": "danger",
+                                        "action_id": "reject_containment",
+                                        "value": json.dumps({"anomaly_id": anomaly_id, "action": "reject"})
+                                    }
+                                ]
+                            })
+
+                    # Write/Update state in DynamoDB Table
+                    anomaly_state_table = os.environ.get("ANOMALY_STATE_TABLE", "")
+                    if anomaly_state_table:
+                        try:
+                            dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-1')
+                            table = dynamodb.Table(anomaly_state_table)
+                            
+                            item = {
+                                'anomaly_id': anomaly_id,
+                                'correlation_id': correlation_id,
+                                'resource_id': anomaly.get('resource_id', 'unknown'),
+                                'anomaly_type': anomaly.get('anomaly_type', 'unknown'),
+                                'environment': anomaly.get('environment', 'unknown'),
+                                'responsible_team': anomaly.get('responsible_team', 'unknown'),
+                                'unblended_cost_24h_usd': str(anomaly.get('unblended_cost_24h_usd', '0.0')),
+                                'is_safe_to_contain': is_safe_to_contain,
+                                'containment_status': containment_status,
+                                'applied_payload': json.dumps(applied_payload),
+                                'rollback_payload': json.dumps(response_data.get("rollback_payload", {})),
+                                'timestamp': datetime.utcnow().isoformat()
                             }
-                        })
+                            table.put_item(Item=item)
+                            print(f"Successfully saved anomaly state to {anomaly_state_table} for anomaly {anomaly_id}")
+                        except Exception as ddb_err:
+                            print(f"Error saving to DynamoDB table {anomaly_state_table}: {ddb_err}")
                         
                     print(f"Sending Slack alert to channel {channel_name}...")
                     slack_payload_str = json.dumps(slack_message)
