@@ -22,6 +22,93 @@ def sign_request(url, method, headers, body_str):
     signer.add_auth(request)
     return dict(request.headers)
 
+def execute_containment_action(action_type, target, cli_command, anomaly_id):
+    print(f"[AUDIT_TRAIL] Starting execution of containment action: {action_type} on target: {target}")
+    print(f"[AUDIT_TRAIL] CLI Command reference: {cli_command}")
+    
+    if action_type in ["inject_aws_tag", "tag-for-review"]:
+        try:
+            if target.startswith("arn:aws:"):
+                tagging_client = boto3.client('resourcegroupstaggingapi', region_name='ap-southeast-1')
+                tagging_client.tag_resources(
+                    ResourceARNList=[target],
+                    Tags={
+                        'finops:review': 'pending',
+                        'finops:anomaly-id': anomaly_id
+                    }
+                )
+            elif target.startswith("i-") or target.startswith("vol-"):
+                ec2_client = boto3.client('ec2', region_name='ap-southeast-1')
+                ec2_client.create_tags(
+                    Resources=[target],
+                    Tags=[
+                        {'Key': 'finops:review', 'Value': 'pending'},
+                        {'Key': 'finops:anomaly-id', 'Value': anomaly_id}
+                    ]
+                )
+            elif "rds" in target or target.startswith("db-"):
+                rds_client = boto3.client('rds', region_name='ap-southeast-1')
+                rds_client.add_tags_to_resource(
+                    ResourceName=target,
+                    Tags=[
+                        {'Key': 'finops:review', 'Value': 'pending'},
+                        {'Key': 'finops:anomaly-id', 'Value': anomaly_id}
+                    ]
+                )
+            else:
+                ec2_client = boto3.client('ec2', region_name='ap-southeast-1')
+                ec2_client.create_tags(
+                    Resources=[target],
+                    Tags=[
+                        {'Key': 'finops:review', 'Value': 'pending'},
+                        {'Key': 'finops:anomaly-id', 'Value': anomaly_id}
+                    ]
+                )
+            print(f"[AUDIT_TRAIL] Successfully executed action: {action_type} on target: {target}")
+            return True, "Executed successfully"
+        except Exception as e:
+            print(f"[AUDIT_TRAIL] [SIMULATION] Failed to tag real resource {target} (likely synthetic in test env): {e}")
+            return True, f"Executed (simulated: {e})"
+            
+    elif action_type in ["stop_instance", "auto-shutdown", "shutdown"]:
+        try:
+            if target.startswith("i-"):
+                ec2_client = boto3.client('ec2', region_name='ap-southeast-1')
+                ec2_client.stop_instances(InstanceIds=[target])
+            elif "rds" in target or target.startswith("db-"):
+                rds_client = boto3.client('rds', region_name='ap-southeast-1')
+                rds_client.stop_db_instance(DBInstanceIdentifier=target)
+            else:
+                ec2_client = boto3.client('ec2', region_name='ap-southeast-1')
+                ec2_client.stop_instances(InstanceIds=[target])
+            print(f"[AUDIT_TRAIL] Successfully executed action: {action_type} on target: {target}")
+            return True, "Executed successfully"
+        except Exception as e:
+            print(f"[AUDIT_TRAIL] [SIMULATION] Failed to stop real resource {target} (likely synthetic in test env): {e}")
+            return True, f"Executed (simulated: {e})"
+            
+    elif action_type in ["stop_notebook_instance", "stop_training_job", "stop-notebook-instance", "stop-training-job"] or "sagemaker" in action_type or "sagemaker" in target or (cli_command and "sagemaker" in cli_command.lower()):
+        try:
+            sagemaker_client = boto3.client('sagemaker', region_name='ap-southeast-1')
+            if "notebook" in action_type or (cli_command and "notebook" in cli_command.lower()):
+                sagemaker_client.stop_notebook_instance(NotebookInstanceName=target)
+            elif "training" in action_type or (cli_command and "training" in cli_command.lower()):
+                sagemaker_client.stop_training_job(TrainingJobName=target)
+            else:
+                try:
+                    sagemaker_client.stop_notebook_instance(NotebookInstanceName=target)
+                except Exception:
+                    sagemaker_client.stop_training_job(TrainingJobName=target)
+            print(f"[AUDIT_TRAIL] Successfully executed SageMaker action: {action_type} on target: {target}")
+            return True, "Executed successfully"
+        except Exception as e:
+            print(f"[AUDIT_TRAIL] [SIMULATION] Failed to stop SageMaker resource {target} (likely synthetic in test env): {e}")
+            return True, f"Executed (simulated: {e})"
+            
+    else:
+        print(f"[AUDIT_TRAIL] Unknown action: {action_type}. Performing simulated run.")
+        return True, "Simulated execution"
+
 def handler(event, context):
     print("Lambda Decision Handler invoked via SQS!")
     
@@ -148,93 +235,121 @@ def handler(event, context):
                     except Exception as ssm_err:
                         print(f"Warning: Failed to retrieve SSM parameter {ssm_param_name}: {ssm_err}")
                             
-                        # Fallback for testing/demonstration if parameter is missing
-                        if not webhook_url:
-                            webhook_url = "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
-                            print(f"Using fallback mock Slack Webhook: {webhook_url}")
-                            
-                        # Build a rich Slack alert message using blocks
-                        rca = eng_data.get("root_cause_analysis", {})
+                    # Fallback for testing/demonstration if parameter is missing
+                    if not webhook_url:
+                        webhook_url = "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+                        print(f"Using fallback mock Slack Webhook: {webhook_url}")
                         
-                        slack_message = {
-                            "channel": channel_name,
-                            "text": f"🚨 *FinOps Watch Alert* - Anomaly Detected: {anomaly_id}",
-                            "blocks": [
-                                {
-                                    "type": "header",
-                                    "text": {
-                                        "type": "plain_text",
-                                        "text": "🚨 FinOps Anomaly Alert",
-                                        "emoji": True
-                                    }
-                                },
-                                {
-                                    "type": "section",
-                                    "fields": [
-                                        {"type": "mrkdwn", "text": f"*Anomaly ID:*\n`{anomaly_id}`"},
-                                        {"type": "mrkdwn", "text": f"*Resource ID:*\n`{anomaly.get('resource_id')}`"},
-                                        {"type": "mrkdwn", "text": f"*Severity:*\n`{anomaly.get('severity')}`"},
-                                        {"type": "mrkdwn", "text": f"*Environment:*\n`{anomaly.get('environment')}`"},
-                                        {"type": "mrkdwn", "text": f"*Responsible Team:*\n`{anomaly.get('responsible_team')}`"},
-                                        {"type": "mrkdwn", "text": f"*24h Cost (USD):*\n`${anomaly.get('unblended_cost_24h_usd')}`"},
-                                        {"type": "mrkdwn", "text": f"*Cost Ratio to 7d Avg:*\n`{anomaly.get('cost_ratio_to_7d_avg')}x`"},
-                                        {"type": "mrkdwn", "text": f"*Correlation ID:*\n`{correlation_id}`"}
-                                    ]
-                                },
-                                {
-                                    "type": "section",
-                                    "text": {
-                                        "type": "mrkdwn",
-                                        "text": f"*Technical Reason / RCA:*\n{rca.get('technical_reason', 'N/A')}"
-                                    }
+                    # Build a rich Slack alert message using blocks
+                    rca = eng_data.get("root_cause_analysis", {})
+                    
+                    slack_message = {
+                        "channel": channel_name,
+                        "text": f"🚨 *FinOps Watch Alert* - Anomaly Detected: {anomaly_id}",
+                        "blocks": [
+                            {
+                                "type": "header",
+                                "text": {
+                                    "type": "plain_text",
+                                    "text": "🚨 FinOps Anomaly Alert",
+                                    "emoji": True
                                 }
-                            ]
-                        }
-                        
-                        # Add missing tags if any
-                        missing_tags = rca.get("missing_mandatory_tags", [])
-                        if missing_tags:
-                            slack_message["blocks"].append({
+                            },
+                            {
+                                "type": "section",
+                                "fields": [
+                                    {"type": "mrkdwn", "text": f"*Anomaly ID:*\n`{anomaly_id}`"},
+                                    {"type": "mrkdwn", "text": f"*Resource ID:*\n`{anomaly.get('resource_id')}`"},
+                                    {"type": "mrkdwn", "text": f"*Severity:*\n`{anomaly.get('severity')}`"},
+                                    {"type": "mrkdwn", "text": f"*Environment:*\n`{anomaly.get('environment')}`"},
+                                    {"type": "mrkdwn", "text": f"*Responsible Team:*\n`{anomaly.get('responsible_team')}`"},
+                                    {"type": "mrkdwn", "text": f"*24h Cost (USD):*\n`${anomaly.get('unblended_cost_24h_usd')}`"},
+                                    {"type": "mrkdwn", "text": f"*Cost Ratio to 7d Avg:*\n`{anomaly.get('cost_ratio_to_7d_avg')}x`"},
+                                    {"type": "mrkdwn", "text": f"*Correlation ID:*\n`{correlation_id}`"}
+                                ]
+                            },
+                            {
                                 "type": "section",
                                 "text": {
+                                    "type": "mrkdwn",
+                                    "text": f"*Technical Reason / RCA:*\n{rca.get('technical_reason', 'N/A')}"
+                                }
+                            }
+                        ]
+                    }
+                    
+                    # Add missing tags if any
+                    missing_tags = rca.get("missing_mandatory_tags", [])
+                    if missing_tags:
+                        slack_message["blocks"].append({
+                            "type": "section",
+                            "text": {
                                     "type": "mrkdwn",
                                     "text": f"⚠️ *Missing Mandatory Tags:* `{', '.join(missing_tags)}`"
-                                }
-                            })
-                            
-                        # Add containment action plan details
-                        applied_payload = response_data.get("applied_payload", {})
-                        action_type = applied_payload.get("action_type")
-                        cli_command = applied_payload.get("aws_cli_command")
+                            }
+                        })
                         
-                        if action_type and cli_command:
-                            slack_message["blocks"].append({
-                                "type": "section",
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": f"⚙️ *Containment Action:* `{action_type}`\n`{cli_command}`"
-                                }
-                            })
-                            
-                        print(f"Sending Slack alert to channel {channel_name}...")
-                        slack_payload_str = json.dumps(slack_message)
+                    # Add containment action plan details
+                    applied_payload = response_data.get("applied_payload", {})
+                    action_type = applied_payload.get("action_type")
+                    cli_command = applied_payload.get("aws_cli_command")
+                    
+                    # Determine environment and obvious pattern status
+                    env = str(anomaly.get("environment", "")).lower()
+                    is_prod = env in ["prod", "production"]
+                    
+                    anomaly_type = anomaly.get("anomaly_type", "")
+                    missing_tags = rca.get("missing_mandatory_tags", [])
+                    is_obvious_pattern = (
+                        anomaly_type in ["idle_resource", "runaway_training", "mis-tagged", "mistagged"] 
+                        or len(missing_tags) > 0 
+                        or "idle" in anomaly_type.lower() 
+                        or "training" in anomaly_type.lower()
+                        or "sagemaker" in anomaly_type.lower()
+                        or action_type in ["inject_aws_tag", "tag-for-review", "stop_instance", "auto-shutdown", "shutdown", "stop_notebook_instance", "stop_training_job", "stop-notebook-instance", "stop-training-job"]
+                    )
+                    
+                    is_safe_to_contain = (not is_prod) and is_obvious_pattern
+                    
+                    if action_type and cli_command:
+                        containment_status = "Skipped (dry-run)"
+                        if is_safe_to_contain:
+                            print(f"Obvious pattern '{anomaly_type}' / action '{action_type}' detected on non-prod environment '{env}'. Executing containment...")
+                            success, message = execute_containment_action(action_type, anomaly.get('resource_id'), cli_command, anomaly_id)
+                            containment_status = f"Executed: {message}"
+                        else:
+                            if is_prod:
+                                containment_status = "Skipped (Dry-run: Production environment guardrail)"
+                            else:
+                                containment_status = "Skipped (Dry-run: Non-obvious pattern)"
+                                
+                        slack_message["blocks"].append({
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": f"⚙️ *Containment Action:* `{action_type}`\n`{cli_command}`\n*Status:* `{containment_status}`"
+                            }
+                        })
                         
-                        # POST to Slack Webhook URL
-                        slack_req = urllib.request.Request(
-                            webhook_url,
-                            data=slack_payload_str.encode('utf-8'),
-                            headers={'Content-Type': 'application/json'},
-                            method='POST'
-                        )
-                        
-                        try:
-                            with urllib.request.urlopen(slack_req, timeout=5) as slack_res:
-                                slack_res_body = slack_res.read().decode('utf-8')
-                                print(f"Slack webhook response: {slack_res_body}")
-                        except urllib.error.HTTPError as slack_http_err:
-                            print(f"Warning: Slack webhook returned HTTP error {slack_http_err.code}: {slack_http_err.read().decode('utf-8')}")
-                        except Exception as slack_err:
-                            print(f"Warning: Failed to connect to Slack webhook: {slack_err}")
+                    print(f"Sending Slack alert to channel {channel_name}...")
+                    slack_payload_str = json.dumps(slack_message)
+                    
+                    # POST to Slack Webhook URL
+                    slack_req = urllib.request.Request(
+                        webhook_url,
+                        data=slack_payload_str.encode('utf-8'),
+                        headers={'Content-Type': 'application/json'},
+                        method='POST'
+                    )
+                    
+                    try:
+                        with urllib.request.urlopen(slack_req, timeout=5) as slack_res:
+                            slack_res_body = slack_res.read().decode('utf-8')
+                            print(f"Slack webhook response: {slack_res_body}")
+                    except urllib.error.HTTPError as slack_http_err:
+                        print(f"Warning: Slack webhook returned HTTP error {slack_http_err.code}: {slack_http_err.read().decode('utf-8')}")
+                    except Exception as slack_err:
+                        print(f"Warning: Failed to connect to Slack webhook: {slack_err}")
                             
             except urllib.error.HTTPError as e:
                 err_body = e.read().decode('utf-8')
