@@ -23,3 +23,8 @@ output "ecr_repository_url" {
   description = "URL của ECR Repository vừa tạo"
 }
 
+output "slack_interactive_api_endpoint" {
+  value       = "${module.slack_interactive_api.api_endpoint}/slack/actions"
+  description = "URL cấu hình Request URL trong Interactivity của Slack App"
+}
+

@@ -184,6 +184,36 @@ module "lambda_two" {
   }
 }
 
+module "slack_interactive_lambda" {
+  source = "../../modules/lambda"
+
+  project_name  = var.project_name
+  function_name = var.slack_interactive_lambda_function_name
+  description   = var.slack_interactive_lambda_description
+
+  package_type = "Zip"
+  runtime      = var.slack_interactive_lambda_runtime
+  handler      = var.slack_interactive_lambda_handler
+  source_dir   = "${path.module}/src/slack_interactive"
+
+  create_role = false
+  role_arn    = aws_iam_role.slack_interactive_lambda_role.arn
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = values(module.vpc.private_subnet_ids)
+
+  policy_depends_on = [
+    aws_iam_role_policy_attachment.slack_interactive_lambda_basic.id,
+    aws_iam_role_policy_attachment.slack_interactive_lambda_vpc.id,
+    aws_iam_role_policy_attachment.slack_interactive_lambda_policy_attach.id,
+  ]
+
+  environment_variables = {
+    ANOMALY_STATE_TABLE = module.anomaly_state_table.table_name
+  }
+}
+
+
 module "telemetry_schedule" {
   source = "../../modules/eventbridge"
 
@@ -483,6 +513,75 @@ resource "aws_iam_role_policy_attachment" "lambda_two_vpc" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+resource "aws_iam_role" "slack_interactive_lambda_role" {
+  name               = "${var.slack_interactive_lambda_function_name}-role"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_generic.json
+
+  tags = {
+    Name = "${var.project_name}-lambda-role-${var.slack_interactive_lambda_function_name}"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "slack_interactive_lambda_basic" {
+  role       = aws_iam_role.slack_interactive_lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_policy" "slack_interactive_lambda_policy" {
+  name        = "${var.slack_interactive_lambda_function_name}-policy"
+  description = "Access policy for slack interactive lambda"
+  policy      = data.aws_iam_policy_document.slack_interactive_lambda_policy_document.json
+}
+
+data "aws_iam_policy_document" "slack_interactive_lambda_policy_document" {
+  statement {
+    sid    = "DynamoDBAccess"
+    effect = "Allow"
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:PutItem",
+      "dynamodb:DeleteItem"
+    ]
+    resources = [
+      module.anomaly_state_table.arn
+    ]
+  }
+
+  statement {
+    sid    = "ContainmentExecution"
+    effect = "Allow"
+    actions = [
+      "ec2:StopInstances",
+      "ec2:StartInstances",
+      "ec2:CreateTags",
+      "ec2:DeleteTags",
+      "rds:StopDBInstance",
+      "rds:StartDBInstance",
+      "rds:AddTagsToResource",
+      "rds:RemoveTagsFromResource",
+      "sagemaker:StopNotebookInstance",
+      "sagemaker:StartNotebookInstance",
+      "sagemaker:StopTrainingJob",
+      "sagemaker:AddTags",
+      "sagemaker:DeleteTags",
+      "resourcegroupstaggingapi:TagResources",
+      "resourcegroupstaggingapi:UntagResources"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "slack_interactive_lambda_policy_attach" {
+  role       = aws_iam_role.slack_interactive_lambda_role.name
+  policy_arn = aws_iam_policy.slack_interactive_lambda_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "slack_interactive_lambda_vpc" {
+  role       = aws_iam_role.slack_interactive_lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 module "slack_webhook_finance" {
   source = "../../modules/ssm"
 
@@ -498,6 +597,22 @@ module "slack_webhook_engineer" {
   value       = var.slack_webhook_engineer
   description = "Slack Webhook URL for the Engineer team"
 }
+
+module "slack_interactive_api" {
+  source = "../../modules/apigateway"
+
+  name                 = var.slack_interactive_api_name
+  description          = var.slack_interactive_api_description
+  route_key            = var.slack_interactive_api_route_key
+  
+  lambda_arn           = module.slack_interactive_lambda.arn
+  lambda_function_name = module.slack_interactive_lambda.function_name
+
+  tags = var.tags
+}
+
+
+
 
 
 

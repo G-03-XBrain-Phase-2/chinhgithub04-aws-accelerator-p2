@@ -282,3 +282,40 @@ variable "slack_webhook_engineer" {
   description = "Slack Webhook URL cho team Engineer (#finops-alert-engineering)"
 }
 
+variable "slack_interactive_api_name" {
+  type        = string
+  description = "Tên định danh của API Gateway cho Slack interactive"
+}
+
+variable "slack_interactive_api_description" {
+  type        = string
+  description = "Mô tả chức năng của Slack interactive API Gateway"
+}
+
+variable "slack_interactive_api_route_key" {
+  type        = string
+  description = "Route key cho Slack interactive API (ví dụ: POST /slack/actions)"
+}
+
+variable "slack_interactive_lambda_function_name" {
+  type        = string
+  description = "Tên của Lambda function Slack interactive handler"
+}
+
+variable "slack_interactive_lambda_description" {
+  type        = string
+  description = "Mô tả cho Lambda function Slack interactive handler"
+}
+
+variable "slack_interactive_lambda_runtime" {
+  type        = string
+  description = "Runtime cho Lambda function Slack interactive handler"
+}
+
+variable "slack_interactive_lambda_handler" {
+  type        = string
+  description = "Handler cho Lambda function Slack interactive handler"
+}
+
+
+

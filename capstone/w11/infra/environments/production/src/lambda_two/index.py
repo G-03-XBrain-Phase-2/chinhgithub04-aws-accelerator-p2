@@ -353,7 +353,7 @@ def handler(event, context):
                                         "type": "button",
                                         "text": {
                                             "type": "plain_text",
-                                            "text": "Chấp nhận",
+                                            "text": "Approve",
                                             "emoji": True
                                         },
                                         "style": "primary",
@@ -390,7 +390,7 @@ def handler(event, context):
                                         "type": "button",
                                         "text": {
                                             "type": "plain_text",
-                                            "text": "Chấp nhận",
+                                            "text": "Approve",
                                             "emoji": True
                                         },
                                         "style": "primary",
@@ -401,7 +401,7 @@ def handler(event, context):
                                         "type": "button",
                                         "text": {
                                             "type": "plain_text",
-                                            "text": "Từ chối",
+                                            "text": "Reject",
                                             "emoji": True
                                         },
                                         "style": "danger",
