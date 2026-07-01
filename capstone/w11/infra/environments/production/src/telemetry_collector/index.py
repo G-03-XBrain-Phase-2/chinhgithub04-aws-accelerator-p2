@@ -63,6 +63,77 @@ def get_athena_results(query_execution_id):
             
     return rows
 
+def compute_std(lst):
+    if len(lst) < 2:
+        return 0.0
+    m = sum(lst) / len(lst)
+    variance = sum((x - m) ** 2 for x in lst) / (len(lst) - 1)
+    return variance ** 0.5
+
+def compute_median(lst):
+    if not lst:
+        return 0.0
+    n = len(lst)
+    s = sorted(lst)
+    if n % 2 == 1:
+        return s[n // 2]
+    else:
+        return (s[n // 2 - 1] + s[n // 2]) / 2.0
+
+def compute_mad(lst):
+    if not lst:
+        return 0.0
+    med = compute_median(lst)
+    abs_devs = [abs(x - med) for x in lst]
+    return compute_median(abs_devs)
+
+def compute_slope(lst):
+    n = len(lst)
+    if n < 2:
+        return 0.0
+    x = list(range(1, n + 1))
+    mean_x = sum(x) / n
+    mean_y = sum(lst) / n
+    num = sum((x[i] - mean_x) * (lst[i] - mean_y) for i in range(n))
+    den = sum((x[i] - mean_x) ** 2 for i in range(n))
+    if den == 0:
+        return 0.0
+    return num / den
+
+def write_features_to_dynamodb(items, table_name):
+    if not items:
+        print("No feature store items to write.")
+        return
+    dynamodb = boto3.client('dynamodb')
+    print(f"Batch writing {len(items)} items to feature store table: {table_name}")
+    for i in range(0, len(items), 25):
+        chunk = items[i:i+25]
+        write_requests = []
+        for item in chunk:
+            ddb_item = {}
+            for k, v in item.items():
+                if v is None:
+                    ddb_item[k] = {'NULL': True}
+                elif isinstance(v, bool):
+                    ddb_item[k] = {'BOOL': v}
+                elif isinstance(v, (int, float)):
+                    ddb_item[k] = {'N': str(v)}
+                elif isinstance(v, str):
+                    ddb_item[k] = {'S': v}
+            write_requests.append({
+                'PutRequest': {
+                    'Item': ddb_item
+                }
+            })
+        try:
+            dynamodb.batch_write_item(
+                RequestItems={
+                    table_name: write_requests
+                }
+            )
+        except Exception as e:
+            print(f"Error batch writing to {table_name}: {e}")
+
 def sign_request(url, method, headers, body_str):
     session = botocore.session.get_session()
     credentials = session.get_credentials()
@@ -85,6 +156,7 @@ def handler(event, context):
     athena_workgroup = os.environ.get('ATHENA_WORKGROUP')
     athena_results_uri = os.environ.get('ATHENA_RESULTS_URI')
     idempotency_table = os.environ.get('IDEMPOTENCY_TABLE')
+    feature_store_table = os.environ.get('FEATURE_STORE_TABLE')
     ai_engine_url = os.environ.get('AI_ENGINE_URL')
     tenant_id = os.environ.get('TENANT_ID', 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d')
     
@@ -95,6 +167,7 @@ def handler(event, context):
     print(f"  ATHENA_WORKGROUP: {athena_workgroup}")
     print(f"  ATHENA_RESULTS_URI: {athena_results_uri}")
     print(f"  IDEMPOTENCY_TABLE: {idempotency_table}")
+    print(f"  FEATURE_STORE_TABLE: {feature_store_table}")
     print(f"  AI_ENGINE_URL: {ai_engine_url}")
     print(f"  TENANT_ID: {tenant_id}")
     
@@ -346,8 +419,271 @@ def handler(event, context):
                 'body': json.loads(cached_resp_str)
             }
             
-    # 6. TODO: Ghi dữ liệu vào DynamoDB feature store (Chưa có schema từ đội AI)
-    print("TODO: Ghi dữ liệu vào DynamoDB feature store (chưa có schema từ đội AI)")
+    # 6. Compute and write features to DynamoDB feature store
+    if cur_items and feature_store_table:
+        print(f"Generating and materializing features to DynamoDB for date {yesterday_str}...")
+        try:
+            # 1. Determine date range for 28-day history
+            start_date_dt = yesterday_dt - timedelta(days=28)
+            start_date_str = start_date_dt.strftime('%Y-%m-%d')
+            print(f"Retrieving 28-day history from {start_date_str} to {yesterday_str}...")
+            
+            # 2. Execute Athena query for history
+            history_query = f"""
+            SELECT 
+              line_item_resource_id, 
+              substr(line_item_usage_start_date, 1, 10) as usage_date,
+              line_item_product_code,
+              sum(line_item_unblended_cost) as daily_cost
+            FROM cur_line_items
+            WHERE substr(line_item_usage_start_date, 1, 10) >= '{start_date_str}'
+              AND substr(line_item_usage_start_date, 1, 10) <= '{yesterday_str}'
+            GROUP BY line_item_resource_id, substr(line_item_usage_start_date, 1, 10), line_item_product_code
+            """
+            
+            qid = run_athena_query(history_query, athena_database, athena_workgroup, athena_results_uri)
+            history_rows = get_athena_results(qid)
+            print(f"Retrieved {len(history_rows)} historical rows from Athena.")
+            
+            # 3. Map the rows into a structured timeseries dictionary: resource_id -> { date_str: cost }
+            resource_history = {}
+            resource_product = {}
+            for row in history_rows:
+                res_id = row.get('line_item_resource_id')
+                if not res_id or res_id.lower() == 'null':
+                    continue
+                date_str = row.get('usage_date')
+                prod_code = row.get('line_item_product_code')
+                
+                try:
+                    cost = float(row.get('daily_cost') or 0.0)
+                except ValueError:
+                    cost = 0.0
+                    
+                if res_id not in resource_history:
+                    resource_history[res_id] = {}
+                resource_history[res_id][date_str] = cost
+                resource_product[res_id] = prod_code
+                
+            # 4. Generate the date list chronologically
+            date_list = []
+            curr = start_date_dt
+            while curr <= yesterday_dt:
+                date_list.append(curr.strftime('%Y-%m-%d'))
+                curr += timedelta(days=1)
+                
+            # 5. Compute raw features for each resource
+            resource_features = []
+            for res_id, history in resource_history.items():
+                cost_series = []
+                for d in date_list:
+                    cost_series.append(history.get(d, 0.0))
+                
+                cost_t = cost_series[-1]
+                history_costs = cost_series[0:28]
+                
+                # Active days count (age_days)
+                age_days = len(history)
+                
+                last_7 = history_costs[-7:]
+                last_14 = history_costs[-14:]
+                
+                rolling_avg = sum(last_7) / len(last_7) if last_7 else 0.0
+                rolling_std = compute_std(last_7)
+                rolling_median = compute_median(last_14)
+                rolling_mad = compute_mad(last_14)
+                slope_14d = compute_slope(last_14)
+                
+                if age_days < 28:
+                    cost_pct_change_28d = 0.0
+                else:
+                    cost_t_28 = history_costs[0]
+                    cost_pct_change_28d = (cost_t - cost_t_28) / (cost_t_28 + 1e-6)
+                    
+                cost_ratio_to_7d_avg = cost_t / (rolling_avg + 1e-6)
+                absolute_cost_spike = max(0.0, cost_t - 3.0 * rolling_std)
+                
+                resource_features.append({
+                    'resource_id': res_id,
+                    'date': yesterday_str,
+                    'product_code': resource_product[res_id],
+                    'cost_t': cost_t,
+                    'age_days': age_days,
+                    'rolling_avg': rolling_avg,
+                    'rolling_std': rolling_std,
+                    'rolling_median': rolling_median,
+                    'rolling_mad': rolling_mad,
+                    'slope_14d': slope_14d,
+                    'cost_pct_change_28d': cost_pct_change_28d,
+                    'cost_ratio_to_7d_avg': cost_ratio_to_7d_avg,
+                    'absolute_cost_spike': absolute_cost_spike
+                })
+                
+            # 6. Group costs by (account_id, product_code) to compute peer ratio
+            peer_groups = {}
+            resource_account = {}
+            for r in cur_items:
+                res_id = r.get('line_item_resource_id')
+                if res_id:
+                    acc_id = r.get('line_item_usage_account_id', tenant_id)
+                    resource_account[res_id] = acc_id
+                    
+                    prod_code = r.get('line_item_product_code', '')
+                    cost_t = 0.0
+                    try:
+                        cost_t = float(r.get('line_item_unblended_cost') or 0.0)
+                    except ValueError:
+                        pass
+                        
+                    key = (acc_id, prod_code)
+                    if key not in peer_groups:
+                        peer_groups[key] = []
+                    peer_groups[key].append(cost_t)
+                    
+            peer_medians = {}
+            for key, costs in peer_groups.items():
+                peer_medians[key] = compute_median(costs)
+                
+            for f in resource_features:
+                res_id = f['resource_id']
+                acc_id = resource_account.get(res_id, tenant_id)
+                prod_code = f['product_code']
+                cost_t = f['cost_t']
+                group_median = peer_medians.get((acc_id, prod_code), 0.0)
+                f['peer_ratio'] = cost_t / (group_median + 1e-6)
+                
+            # 7. Apply Cold-start Imputation for resource with age_days < 14
+            metrics_to_impute = [
+                'rolling_avg', 'rolling_std', 'rolling_median', 'rolling_mad',
+                'slope_14d', 'cost_pct_change_28d', 'cost_ratio_to_7d_avg',
+                'absolute_cost_spike', 'peer_ratio'
+            ]
+            
+            product_medians = {}
+            global_medians = {}
+            
+            for metric in metrics_to_impute:
+                global_vals = []
+                prod_vals = {}
+                for f in resource_features:
+                    if f['age_days'] >= 14:
+                        val = f[metric]
+                        global_vals.append(val)
+                        prod_code = f['product_code']
+                        if prod_code not in prod_vals:
+                            prod_vals[prod_code] = []
+                        prod_vals[prod_code].append(val)
+                        
+                global_medians[metric] = compute_median(global_vals) if global_vals else 0.0
+                for prod_code, vals in prod_vals.items():
+                    if prod_code not in product_medians:
+                        product_medians[prod_code] = {}
+                    product_medians[prod_code][metric] = compute_median(vals)
+                    
+            for f in resource_features:
+                if f['age_days'] < 14:
+                    prod_code = f['product_code']
+                    for metric in metrics_to_impute:
+                        imputed_val = product_medians.get(prod_code, {}).get(metric)
+                        if imputed_val is None:
+                            imputed_val = global_medians[metric]
+                        f[metric] = imputed_val
+                        
+            # 8. Build final DynamoDB items and write
+            cur_lookup = {r['line_item_resource_id']: r for r in cur_items if r.get('line_item_resource_id')}
+            ddb_items = []
+            now_epoch = int(time.time())
+            materialized_at = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            ttl_expiry_fs = now_epoch + 35 * 24 * 3600
+            
+            for f in resource_features:
+                res_id = f['resource_id']
+                r = cur_lookup.get(res_id)
+                if not r:
+                    continue
+                
+                env = r.get('resource_tags_user_environment')
+                if not env or env.lower() in ('null', 'unknown'):
+                    env = None
+                    
+                team = r.get('resource_tags_user_team')
+                if not team or team.lower() == 'null':
+                    team = 'team_missing'
+                    
+                owner = r.get('resource_tags_user_owner')
+                if not owner or owner.lower() == 'null':
+                    owner = 'owner_missing'
+                    
+                cost_center = r.get('resource_tags_user_cost_center')
+                if not cost_center or cost_center.lower() == 'null':
+                    cost_center = None
+                    
+                usage_amount = 0.0
+                try:
+                    usage_amount = float(r.get('line_item_usage_amount') or 0.0)
+                except ValueError:
+                    pass
+                    
+                unblended_cost = 0.0
+                try:
+                    unblended_cost = float(r.get('line_item_unblended_cost') or 0.0)
+                except ValueError:
+                    pass
+                
+                # Simple logic for usage density: if product code is AmazonEC2, density is usage_amount / 24, max 1.0. Else 1.0
+                if r.get('line_item_product_code') == 'AmazonEC2':
+                    usage_density = min(usage_amount / 24.0, 1.0)
+                else:
+                    usage_density = 1.0
+                
+                item = {
+                    'resource_id': res_id,
+                    'date': yesterday_str,
+                    'line_item_usage_account_id': r.get('line_item_usage_account_id', ''),
+                    'line_item_product_code': r.get('line_item_product_code', ''),
+                    'line_item_usage_type': r.get('line_item_usage_type', ''),
+                    'pricing_unit': r.get('pricing_unit', ''),
+                    'line_item_usage_amount': usage_amount,
+                    'line_item_unblended_cost': unblended_cost,
+                    'is_estimated': False,
+                    
+                    'rolling_avg': f['rolling_avg'],
+                    'rolling_std': f['rolling_std'],
+                    'rolling_median': f['rolling_median'],
+                    'rolling_mad': f['rolling_mad'],
+                    'slope_14d': f['slope_14d'],
+                    'cost_pct_change_28d': f['cost_pct_change_28d'],
+                    'cost_ratio_to_7d_avg': f['cost_ratio_to_7d_avg'],
+                    'absolute_cost_spike': f['absolute_cost_spike'],
+                    'peer_ratio': f['peer_ratio'],
+                    'age_days': f['age_days'],
+                    
+                    'cpu_mean': None,
+                    'usage_density_24h': usage_density,
+                    'memory_mib': None,
+                    'network_in_bytes': None,
+                    'network_out_bytes': None,
+                    'disk_io_ops': None,
+                    'database_connections': None,
+                    'gpu_utilization': None,
+                    
+                    'resource_tags_user_environment': env,
+                    'resource_tags_user_team': team,
+                    'resource_tags_user_owner': owner,
+                    'resource_tags_user_cost_center': cost_center,
+                    
+                    'materialized_at': materialized_at,
+                    'schema_version': '1.0.0',
+                    'ttl_expiry': ttl_expiry_fs
+                }
+                ddb_items.append(item)
+                
+            write_features_to_dynamodb(ddb_items, feature_store_table)
+            print("Successfully materialized all features to feature store.")
+        except Exception as ex:
+            print(f"Error computing or materializing features: {ex}")
+            
+
     
     # 7. TODO: Thu thập và gửi metrics hiệu năng từ CloudWatch (chưa có mẫu metrics)
     print("TODO: Thu thập và gửi metrics hiệu năng từ CloudWatch (chưa có mẫu metrics)")

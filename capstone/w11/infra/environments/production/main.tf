@@ -26,17 +26,18 @@ module "telemetry_lambda" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = values(module.vpc.private_subnet_ids)
 
-  timeout    = 300
+  timeout = 300
 
   environment_variables = {
-    TELEMETRY_BUCKET   = module.telemetry_bucket.bucket_id
-    RAW_CUR_BUCKET     = module.raw_cur_bucket.bucket_id
-    ATHENA_DATABASE    = module.athena.database_name
-    ATHENA_WORKGROUP   = module.athena.workgroup_name
-    ATHENA_RESULTS_URI = "s3://${module.athena_results_bucket.bucket_id}/results/"
-    IDEMPOTENCY_TABLE  = module.idempotency_table.table_name
-    AI_ENGINE_URL      = "http://${module.ai_engine_alb.alb_dns_name}/v1/detect"
-    TENANT_ID          = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+    TELEMETRY_BUCKET    = module.telemetry_bucket.bucket_id
+    RAW_CUR_BUCKET      = module.raw_cur_bucket.bucket_id
+    ATHENA_DATABASE     = module.athena.database_name
+    ATHENA_WORKGROUP    = module.athena.workgroup_name
+    ATHENA_RESULTS_URI  = "s3://${module.athena_results_bucket.bucket_id}/results/"
+    IDEMPOTENCY_TABLE   = module.idempotency_table.table_name
+    FEATURE_STORE_TABLE = module.feature_store_table.table_name
+    AI_ENGINE_URL       = "http://${module.ai_engine_alb.alb_dns_name}/v1/detect"
+    TENANT_ID           = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
   }
 
   iam_policy_document_json = data.aws_iam_policy_document.telemetry_lambda_custom_policy.json
@@ -129,6 +130,8 @@ module "feature_store_table" {
   hash_key_type  = "S"
   range_key      = var.feature_store_table_range_key
   range_key_type = "S"
+  ttl_enabled    = true
+  ttl_attribute  = "ttl_expiry"
 }
 
 module "athena_results_bucket" {
@@ -211,7 +214,8 @@ data "aws_iam_policy_document" "telemetry_lambda_custom_policy" {
       "dynamodb:UpdateItem",
       "dynamodb:DeleteItem",
       "dynamodb:Query",
-      "dynamodb:Scan"
+      "dynamodb:Scan",
+      "dynamodb:BatchWriteItem"
     ]
     resources = [
       module.idempotency_table.arn,
