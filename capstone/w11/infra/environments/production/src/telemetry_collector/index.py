@@ -175,6 +175,7 @@ def handler(event, context):
     # Support manual date input in event like: {"date": "2026-03-26"}
     override_date = event.get('date') if isinstance(event, dict) else None
     override_account = event.get('linked_account_id') if isinstance(event, dict) else None
+    is_ad_hoc = event.get('is_ad_hoc', False) if isinstance(event, dict) else False
     if override_date:
         today_dt = datetime.strptime(override_date, '%Y-%m-%d')
     else:
@@ -384,42 +385,43 @@ def handler(event, context):
     idempotency_key = f"{tenant_id}:{yesterday_str}:detect"
     dynamodb = boto3.client('dynamodb')
     
-    now_epoch = int(time.time())
-    ttl_expiry = now_epoch + 24 * 3600  # 24 hours expiry
-    
-    try:
-        dynamodb.put_item(
-            TableName=idempotency_table,
-            Item={
-                'idempotency_key': {'S': idempotency_key},
-                'status': {'S': 'IN_PROGRESS'},
-                'created_at': {'N': str(now_epoch)},
-                'ttl': {'N': str(ttl_expiry)}
-            },
-            ConditionExpression='attribute_not_exists(idempotency_key)'
-        )
-        print(f"Idempotency key {idempotency_key} registered as IN_PROGRESS")
-    except dynamodb.exceptions.ConditionalCheckFailedException:
-        # Check if already processed
-        resp = dynamodb.get_item(
-            TableName=idempotency_table,
-            Key={'idempotency_key': {'S': idempotency_key}}
-        )
-        item = resp.get('Item', {})
-        status = item.get('status', {}).get('S', '')
-        if status == 'IN_PROGRESS':
-            print(f"Idempotency key {idempotency_key} is IN_PROGRESS. Skipping execution.")
-            return {
-                'statusCode': 409,
-                'body': f"Execution already in progress for key {idempotency_key}"
-            }
-        elif status == 'COMPLETED':
-            print(f"Idempotency key {idempotency_key} is COMPLETED. Returning cached response.")
-            cached_resp_str = item.get('response_cache', {}).get('S', '{}')
-            return {
-                'statusCode': 200,
-                'body': json.loads(cached_resp_str)
-            }
+    if not is_ad_hoc:
+        now_epoch = int(time.time())
+        ttl_expiry = now_epoch + 24 * 3600  # 24 hours expiry
+        
+        try:
+            dynamodb.put_item(
+                TableName=idempotency_table,
+                Item={
+                    'idempotency_key': {'S': idempotency_key},
+                    'status': {'S': 'IN_PROGRESS'},
+                    'created_at': {'N': str(now_epoch)},
+                    'ttl': {'N': str(ttl_expiry)}
+                },
+                ConditionExpression='attribute_not_exists(idempotency_key)'
+            )
+            print(f"Idempotency key {idempotency_key} registered as IN_PROGRESS")
+        except dynamodb.exceptions.ConditionalCheckFailedException:
+            # Check if already processed
+            resp = dynamodb.get_item(
+                TableName=idempotency_table,
+                Key={'idempotency_key': {'S': idempotency_key}}
+            )
+            item = resp.get('Item', {})
+            status = item.get('status', {}).get('S', '')
+            if status == 'IN_PROGRESS':
+                print(f"Idempotency key {idempotency_key} is IN_PROGRESS. Skipping execution.")
+                return {
+                    'statusCode': 409,
+                    'body': f"Execution already in progress for key {idempotency_key}"
+                }
+            elif status == 'COMPLETED':
+                print(f"Idempotency key {idempotency_key} is COMPLETED. Returning cached response.")
+                cached_resp_str = item.get('response_cache', {}).get('S', '{}')
+                return {
+                    'statusCode': 200,
+                    'body': json.loads(cached_resp_str)
+                }
             
     # 6. Compute and write features to DynamoDB feature store
     if cur_items and feature_store_table:
@@ -723,7 +725,7 @@ def handler(event, context):
     if not telemetry_delay_event:
         req_body = {
             "data_source_type": "S3_POINTER",
-            "is_ad_hoc": False,
+            "is_ad_hoc": is_ad_hoc,
             "telemetry_delay_event": False,
             "s3_bucket_uri": s3_bucket_uri,
             "s3_object_checksum": s3_object_checksum,
@@ -732,7 +734,7 @@ def handler(event, context):
     else:
         req_body = {
             "data_source_type": "RAW_JSON",
-            "is_ad_hoc": False,
+            "is_ad_hoc": is_ad_hoc,
             "telemetry_delay_event": True,
             "missing_resources": ["AmazonRDS", "AmazonDynamoDB"],
             "current_ce_cost_gap_usd": 50.0,
@@ -781,18 +783,19 @@ def handler(event, context):
             print("AI Engine Response:", response_body)
             
             # Update idempotency store to COMPLETED
-            dynamodb.update_item(
-                TableName=idempotency_table,
-                Key={'idempotency_key': {'S': idempotency_key}},
-                UpdateExpression='SET #s = :completed, response_cache = :resp, payload_sha256 = :sha',
-                ExpressionAttributeNames={'#s': 'status'},
-                ExpressionAttributeValues={
-                    ':completed': {'S': 'COMPLETED'},
-                    ':resp': {'S': response_body},
-                    ':sha': {'S': req_body_hash}
-                }
-            )
-            print(f"Idempotency key {idempotency_key} updated to COMPLETED")
+            if not is_ad_hoc:
+                dynamodb.update_item(
+                    TableName=idempotency_table,
+                    Key={'idempotency_key': {'S': idempotency_key}},
+                    UpdateExpression='SET #s = :completed, response_cache = :resp, payload_sha256 = :sha',
+                    ExpressionAttributeNames={'#s': 'status'},
+                    ExpressionAttributeValues={
+                        ':completed': {'S': 'COMPLETED'},
+                        ':resp': {'S': response_body},
+                        ':sha': {'S': req_body_hash}
+                    }
+                )
+                print(f"Idempotency key {idempotency_key} updated to COMPLETED")
             
             return {
                 'statusCode': 200,
@@ -804,10 +807,11 @@ def handler(event, context):
         print(f"HTTP Error {e.code}: {err_body}")
         
         # Remove idempotency item so it can be retried
-        dynamodb.delete_item(
-            TableName=idempotency_table,
-            Key={'idempotency_key': {'S': idempotency_key}}
-        )
+        if not is_ad_hoc:
+            dynamodb.delete_item(
+                TableName=idempotency_table,
+                Key={'idempotency_key': {'S': idempotency_key}}
+            )
         return {
             'statusCode': e.code,
             'body': f"AI Engine HTTP Error: {err_body}"

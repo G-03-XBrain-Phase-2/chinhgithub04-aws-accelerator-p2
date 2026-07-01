@@ -280,6 +280,7 @@ data "aws_iam_policy_document" "telemetry_lambda_custom_policy" {
     actions = [
       "dynamodb:PutItem",
       "dynamodb:GetItem",
+      "dynamodb:BatchGetItem",
       "dynamodb:UpdateItem",
       "dynamodb:DeleteItem",
       "dynamodb:Query",
